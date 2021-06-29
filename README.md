@@ -131,7 +131,7 @@ const src = await map.renderToDataURL();
 
 #### with overlay image and computed extent
 ```ts
-import { StaticMap, StaticMapImage, StaticMapOptions } from 'static-map';
+import { LatLngBounds, StaticMap, StaticMapOptions } from 'static-map';
 const mapopt: StaticMapOptions = {
 	width: 512,
 	height: 512,
@@ -139,14 +139,12 @@ const mapopt: StaticMapOptions = {
 	paddingY: 32,
 	tileCache: '/tmp/tiles'
 };
-const img: StaticMapImage = {
-	src: 'https://my.funky.src/image.png',
-	bounds: {
-		min: { lat: 1.0, lng: 2.0 },
-		max: { lat: 2.0, lng: 3.0 }
-	}
+const bounds: LatLngBounds = {
+	min: { lat: 1.0, lng: 2.0 },
+	max: { lat: 2.0, lng: 3.0 }
 };
-const map = new StaticMap(mapopt).addImage(img);
+const map = new StaticMap(mapopt)
+	.addImage('https://my.funky.src/image.png', bounds);
 const buffer = await map.renderToBuffer();
 ...
 ```

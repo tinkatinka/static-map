@@ -17,6 +17,11 @@
 		"url": "https://github.com/tinkatinka/static-map/issues"
 	},
 	"homepage": "https://github.com/tinkatinka/static-map#readme",
+	"keywords": [
+		"map",
+		"tiles",
+		"static"
+	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist/*",
