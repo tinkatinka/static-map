@@ -23,14 +23,31 @@ describe('Test map rendering', () => {
 			tileCache: '/tmp/tiles',
 			grayscale: true
 		})
-			.addImage({
-				src: 'https://api.tetraeder.solar/render_detail_images/berlin/details/2000/radiation_2541_300x200.png',
-				bounds: {
+			.addImage(
+				'https://api.tetraeder.solar/render_detail_images/berlin/details/2000/radiation_2541_300x200.png',
+				{
 					min: { lat: 52.5129470739252, lng: 13.2986032091238 },
 					max: { lat: 52.5133773418867, lng: 13.2988693235785 }
 				}
-			});
+			);
 		const buffer = await map.renderToBuffer();
 		writeFileSync('/tmp/map_zille.png', buffer);
+	});
+	it('should render a map with a blue line from Paris to Berlin to Munich and back', async () => {
+		const map = new StaticMap({
+			paddingX: 32,
+			paddingY: 32,
+			tileCache: '/tmp/tiles'
+		})
+			.addLines([
+				{ lat: 52.5, lng: 13.4 },
+				{ lat: 48.9, lng: 2.3 },
+				{ lat: 48.1, lng: 11.6 },
+				{ lat: 52.5, lng: 13.4 }
+			], {
+				strokeStyle: 'blue'
+			});
+		const buffer = await map.renderToBuffer();
+		writeFileSync('/tmp/map_line.png', buffer);
 	});
 });

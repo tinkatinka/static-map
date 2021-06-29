@@ -14,9 +14,23 @@ export interface LatLngBounds {
 	max: LatLng;
 }
 
+export type StaticMapOverlay = StaticMapImage | StaticMapLine;
+
 export interface StaticMapImage {
 	src: string;
 	bounds: LatLngBounds;
+}
+
+export interface StaticMapLine {
+	points: LatLng[];
+	options: StaticMapLineOptions;
+}
+
+export interface StaticMapLineOptions {
+	strokeStyle: string;
+	lineWidth: number;
+	lineJoin: 'bevel' | 'round' | 'miter';
+	lineCap: 'butt' | 'round' | 'square';
 }
 
 export interface StaticMapOptions {
@@ -61,6 +75,13 @@ export class StaticMap {
 		tileMaxZoom: 20,
 		grayscale: false
 	};
+	/** Default line options */
+	private static defaultLineOptions: StaticMapLineOptions = {
+		strokeStyle: 'black',
+		lineWidth: 1.0,
+		lineCap: 'round',
+		lineJoin: 'round'
+	};
 
 	options: StaticMapOptions;
 
@@ -74,8 +95,8 @@ export class StaticMap {
 
 	/** A tile cache, if desired */
 	private cache?: TileCache;
-	/** An array of image overlays */
-	private images: StaticMapImage[];
+	/** An array of overlays */
+	private overlays: StaticMapOverlay[];
 
 	/**
 	 * Construct a new StaticMap object with options
@@ -84,7 +105,7 @@ export class StaticMap {
 	constructor(options?: Partial<StaticMapOptions>) {
 		this.options = {...StaticMap.defaultOptions, ...options};
 		this.cache = this.options.tileCache ? new TileCache(this.options.tileCache) : undefined;
-		this.images = [];
+		this.overlays = [];
 	}
 
 	/**
@@ -108,13 +129,48 @@ export class StaticMap {
 	}
 
 	/**
-	 * Add an image overlay
-	 * @param img Image overlay source and bounding rect
+	 * Add an overlay
+	 * @param overlay Overlay to add
 	 * @returns `this`
 	 */
-	addImage(img: StaticMapImage): StaticMap {
-		this.images.push(img);
+	addOverlay(overlay: StaticMapOverlay): StaticMap {
+		this.overlays.push(overlay);
 		return this;
+	}
+
+	/**
+	 * Add an image overlay
+	 * @param src The source URL of this image
+	 * @param bounds The bounds of this image
+	 */
+	addImage(src: string, bounds: LatLngBounds): StaticMap {
+		return this.addOverlay({ src, bounds });
+	}
+
+	/**
+	 * Add lines
+	 * @param points The points to be connected by lines
+	 * @param options The drawing style of the line (optional)
+	 * @returns `this`
+	 */
+	addLines(points: LatLng[], options?: Partial<StaticMapLineOptions>): StaticMap {
+		if (points.length >= 2) {
+			return this.addOverlay({
+				points: points,
+				options: {...StaticMap.defaultLineOptions, ...options}
+			});
+		}
+		return this;
+	}
+
+	/**
+	 * Add a single line
+	 * @param src The origin of the line
+	 * @param dst The destination of the line
+	 * @param options The drawing style of the line (optional)
+	 */
+	addLine(src: LatLng, dst: LatLng, options?: Partial<StaticMapLineOptions>): StaticMap {
+		return this.addLines([src, dst], options);
 	}
 
 
@@ -159,30 +215,70 @@ export class StaticMap {
 		return this.yToPy(this.latToY(lat, zoom), centerY, scale);
 	}
 
+	/** Transform geo coordinates to pixel coordinates */
+	private latlngToPxPy(latlng: LatLng, zoom: number, centerX: number, centerY: number, scale: number): [number, number] {
+		return [this.lngToPx(latlng.lng, zoom, centerX, scale), this.latToPy(latlng.lat, zoom, centerY, scale)];
+	}
+
+	/** Get the type of an overlay */
+	private overlayType(overlay: StaticMapOverlay): string {
+		if ((overlay as StaticMapImage).bounds !== undefined) {
+			return 'image';
+		} else {
+			return 'line';
+		}
+	}
+
 	/**
-	 * Calculate extent of this map from image overlays
+	 * Calculate extent of a single overlay
+	 * @param overlay The overlay to check
+	 * @returns Maximal enclosing bounds of this overlay
+	 */
+	private overlayExtent(overlay: StaticMapOverlay): LatLngBounds {
+		const hasBounds = (o: StaticMapOverlay): o is StaticMapImage => ((o as StaticMapImage).bounds !== undefined);
+		if (hasBounds(overlay)) {
+			return overlay.bounds;
+		} else {
+			const min = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr < prev) ? curr : prev));
+			const max = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr > prev) ? curr : prev));
+			const bounds = (points: Array<LatLng>): LatLngBounds => ({
+				min: {
+					lat: min(points.map(p => p.lat)),
+					lng: min(points.map(p => p.lng))
+				},
+				max: {
+					lat: max(points.map(p => p.lat)),
+					lng: max(points.map(p => p.lng))
+				}
+			});
+			return bounds((overlay as StaticMapLine).points);
+		}
+	}
+
+	/**
+	 * Calculate extent of this map from overlays
 	 * @returns Maximal enclosing bounds of all overlays or `undefined` if no overlays exist
 	 */
 	private calculateExtent(): LatLngBounds | undefined {
-		if (this.images.length < 1) {
+		if (this.overlays.length < 1) {
 			return undefined;
 		}
-		if (this.images.length < 2) {
-			return this.images[0].bounds;
+		if (this.overlays.length < 2) {
+			return this.overlayExtent(this.overlays[0]);
 		}
 		const min = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr < prev) ? curr : prev));
 		const max = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr > prev) ? curr : prev));
-		const bounds = this.images.map(id => id.bounds);
-		return {
+		const union = (arr: Array<LatLngBounds>): LatLngBounds => ({
 			min: {
-				lat: min(bounds.map(b => b.min.lat)),
-				lng: min(bounds.map(b => b.min.lng))
+				lat: min(arr.map(b => b.min.lat)),
+				lng: min(arr.map(b => b.min.lng))
 			},
 			max: {
-				lat: max(bounds.map(b => b.max.lat)),
-				lng: max(bounds.map(b => b.max.lng))
+				lat: max(arr.map(b => b.max.lat)),
+				lng: max(arr.map(b => b.max.lng))
 			}
-		};
+		});
+		return union(this.overlays.map(this.overlayExtent));
 	}
 
 	/**
@@ -286,15 +382,43 @@ export class StaticMap {
 			}
 			ctx.putImageData(imgData, 0, 0);
 		}
-		// image overlays
-		for (const imgdata of this.images) {
-			const img = await Canvas.loadImage(imgdata.src);
-			const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerX, scale);
-			const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerY, scale);
-			const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerX, scale) - x;
-			const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerY, scale) - y;
-			// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
-			ctx.drawImage(img, x, y, dx, dy);
+		// image and line overlays
+		for (const overlay of this.overlays) {
+			const type = this.overlayType(overlay);
+			switch (type) {
+				case 'image': {
+					const imgdata = overlay as StaticMapImage;
+					const img = await Canvas.loadImage(imgdata.src);
+					const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerX, scale);
+					const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerY, scale);
+					const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerX, scale) - x;
+					const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerY, scale) - y;
+					// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
+					ctx.drawImage(img, x, y, dx, dy);
+					break;
+				}
+				case 'line': {
+					const linedata = overlay as StaticMapLine;
+					if (linedata.points.length > 1) {
+						const [x0, y0] = this.latlngToPxPy(linedata.points[0], zoom, centerX, centerY, scale);
+						// console.log(`[line] moving to (${x0}, ${y0})`);
+						ctx.moveTo(x0, y0);
+						for (const p of linedata.points.slice(1)) {
+							const [px, py] = this.latlngToPxPy(p, zoom, centerX, centerY, scale);
+							// console.log(`[line] drawing to (${px}, ${py})`);
+							ctx.lineTo(px, py);
+						}
+						ctx.strokeStyle = linedata.options.strokeStyle;
+						ctx.lineWidth = linedata.options.lineWidth;
+						ctx.lineCap = linedata.options.lineCap;
+						ctx.lineJoin = linedata.options.lineJoin;
+						ctx.stroke();
+					}
+					break;
+				}
+				default:
+					throw new Error(`Unknown overlay type "${type}"`);
+			}
 		}
 		// done
 		return canvas;

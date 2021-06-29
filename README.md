@@ -24,10 +24,7 @@ The constructor can be called with an optional `StaticMapOptions` object, overri
 	height: number;           // height of the image in pixels [default: 512]
 	paddingX: number;         // horizontal padding in pixels [default: 0]
 	paddingY: number;         // vertical padding in pixels [default: 0]
-	extent?: {                // extent of the map [default: `undefined`]
-		min: { lat: number; lng: number; }
-		max: { lat: number; lng: number; }
-	}
+	extent?: LatLngBounds;    // extent of the map [default: `undefined`]
 	tileURL: string;          // template string for tile URL [default: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png']
 	tileSize: number;         // size of tiles [default: 256]
 	tileMaxZoom: number;      // maximum zoom available for tiles [default: 20]
@@ -39,17 +36,56 @@ The constructor can be called with an optional `StaticMapOptions` object, overri
 **Note**: Either an explicit `extent` of the map *or* at least one overlay image (see below) **must** be defined,
 otherwise the image generation will fail.
 
-### Overlay images
+### Types
+
+#### LatLng
+```ts
+{
+	lat: number; // latitude
+	lng: number; // longitude
+}
+```
+
+#### LatLngBounds
+```ts
+{ 
+	min: LatLng; // minimum point
+	max: LatLng; // maximum point
+}
+```
+
+### Overlays
+
+#### Lines
 Can be added using
 
 ```ts
-.addImage({
+.addLines(points: LatLng[], options?: Partial<StaticMapLineOptions>);
+
+	/* or */
+
+.addLine(src: LatLng, dst: LatLng, options?: Partial<StaticMapLineOptions>);
+```
+
+Options:
+
+```ts
+interface StaticMapLineOptions {
+	strokeStyle: string;                  // css stroke style [default: 'black'],
+	lineWidth: number;                    // line width in pixels [default: 1.0],
+	lineCap: 'butt' | 'round' | 'square'  // [default: 'round']
+	lineJoin: 'bevel' | 'round' | 'miter' // [default: 'round']
+}
+```
+
+#### Images
+Can be added using
+
+```ts
+.addImage(
 	src: string,
-	bounds: {
-		min: { lat: number; lng: number },
-		max: { lat: number; lng: number }
-	}
-});
+	bounds: LatLngBounds
+);
 ```
 
 ### Map image
@@ -57,7 +93,9 @@ Can be obtained via async functions
 
 ```ts
 .renderToDataURL(): Promise<string>
+
 	/* or */
+
 .renderToBuffer(): Promise<Buffer>
 ```
 Both of them will fail if the `.extent` of the map is not explicitly defined or cannot be computed (because there are
