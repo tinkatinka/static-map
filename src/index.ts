@@ -93,6 +93,7 @@ export class StaticMap {
 	 */
 	async renderToDataURL(): Promise<string> {
 		const canvas = await this.createCanvas();
+		// FIXME: Use version w/ callbacks here but couldn't get those to work
 		return canvas.toDataURL('image/png');
 	}
 
@@ -102,6 +103,7 @@ export class StaticMap {
 	 */
 	async renderToBuffer(): Promise<Buffer> {
 		const canvas = await this.createCanvas();
+		// FIXME: Use version w/ callbacks here but couldn't get those to work
 		return canvas.toBuffer('image/png');
 	}
 
