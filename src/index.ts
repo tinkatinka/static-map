@@ -14,7 +14,12 @@ export interface LatLngBounds {
 	max: LatLng;
 }
 
-export type StaticMapOverlay = StaticMapImage | StaticMapLine;
+interface Point {
+	x: number;
+	y: number;
+}
+
+export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle;
 
 export interface StaticMapImage {
 	src: string;
@@ -33,6 +38,18 @@ export interface StaticMapLineOptions {
 	lineCap: 'butt' | 'round' | 'square';
 }
 
+export interface StaticMapCircle {
+	center: LatLng;
+	options: StaticMapCircleOptions;
+}
+
+export interface StaticMapCircleOptions {
+	radius: number;
+	strokeStyle?: string;
+	lineWidth: number;
+	fillStyle?: string;
+}
+
 export interface StaticMapOptions {
 	/** Width of the map image in pixels */
 	width: number;
@@ -44,6 +61,8 @@ export interface StaticMapOptions {
 	paddingY: number;
 	/** Extent of the map */
 	extent?: LatLngBounds;
+	/** Scale map to match size and padding exactly */
+	scaling: boolean;
 	/** Tile URL template */
 	tileURL: string;
 	/** Tile size */
@@ -70,6 +89,7 @@ export class StaticMap {
 		height: 512,
 		paddingX: 0,
 		paddingY: 0,
+		scaling: true,
 		tileURL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 		tileSize: 256,
 		tileMaxZoom: 20,
@@ -81,6 +101,13 @@ export class StaticMap {
 		lineWidth: 1.0,
 		lineCap: 'round',
 		lineJoin: 'round'
+	};
+	/** Default circle options */
+	private static defaultCircleOptions: StaticMapCircleOptions = {
+		radius: 5.0,
+		strokeStyle: 'black',
+		lineWidth: 1.0,
+		fillStyle: 'rgba(0, 0, 0, 0.3)'
 	};
 
 	options: StaticMapOptions;
@@ -103,7 +130,7 @@ export class StaticMap {
 	 * @param options Options to configure this instance
 	 */
 	constructor(options?: Partial<StaticMapOptions>) {
-		this.options = {...StaticMap.defaultOptions, ...options};
+		this.options = { ...StaticMap.defaultOptions, ...options };
 		this.cache = this.options.tileCache ? new TileCache(this.options.tileCache) : undefined;
 		this.overlays = [];
 	}
@@ -157,7 +184,7 @@ export class StaticMap {
 		if (points.length >= 2) {
 			return this.addOverlay({
 				points: points,
-				options: {...StaticMap.defaultLineOptions, ...options}
+				options: { ...StaticMap.defaultLineOptions, ...options }
 			});
 		}
 		return this;
@@ -168,9 +195,23 @@ export class StaticMap {
 	 * @param src The origin of the line
 	 * @param dst The destination of the line
 	 * @param options The drawing style of the line (optional)
+	 * @returns `this`
 	 */
 	addLine(src: LatLng, dst: LatLng, options?: Partial<StaticMapLineOptions>): StaticMap {
 		return this.addLines([src, dst], options);
+	}
+
+	/**
+	 * Add a circle
+	 * @param center The center of the circle
+	 * @param options Options how to draw the circle (optional)
+	 * @returns `this`
+	 */
+	addCircle(center: LatLng, options?: Partial<StaticMapCircleOptions>): StaticMap {
+		return this.addOverlay({
+			center: center,
+			options: { ...StaticMap.defaultCircleOptions, ...options }
+		});
 	}
 
 
@@ -195,14 +236,30 @@ export class StaticMap {
 		return (1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * Math.pow(2, zoom);
 	}
 
+	/** Transform geo coordinate to tile numbers */
+	private latlngToXY(geo: LatLng, zoom: number): Point {
+		return {
+			x: this.lngToX(geo.lng, zoom),
+			y: this.latToY(geo.lat, zoom)
+		};
+	}
+
 	/** Transform horizontal tile number to pixel coordinate */
 	private xToPx(x: number, centerX: number, scale: number = 1.0): number {
-		return Math.round((x - centerX) * this.options.tileSize * scale + this.options.width/2);
+		return Math.round((x - centerX) * this.options.tileSize * scale + this.options.width / 2);
 	}
 
 	/** Transform vertical tile number to pixel coordinate */
 	private yToPy(y: number, centerY: number, scale: number = 1.0): number {
-		return Math.round((y - centerY) * this.options.tileSize * scale + this.options.height/2);
+		return Math.round((y - centerY) * this.options.tileSize * scale + this.options.height / 2);
+	}
+
+	/** Transform tile numbers to pixel coordinates */
+	private xyToPxPy(p: Point, center: Point, scale: number = 1.0): Point {
+		return {
+			x: this.xToPx(p.x, center.x, scale),
+			y: this.yToPy(p.y, center.y, scale)
+		};
 	}
 
 	/** Transform longitude to horizontal pixel coordinate */
@@ -216,14 +273,29 @@ export class StaticMap {
 	}
 
 	/** Transform geo coordinates to pixel coordinates */
-	private latlngToPxPy(latlng: LatLng, zoom: number, centerX: number, centerY: number, scale: number): [number, number] {
-		return [this.lngToPx(latlng.lng, zoom, centerX, scale), this.latToPy(latlng.lat, zoom, centerY, scale)];
+	private latlngToPxPy(latlng: LatLng, zoom: number, center: Point, scale: number = 1.0): Point {
+		return {
+			x: this.lngToPx(latlng.lng, zoom, center.x, scale),
+			y: this.latToPy(latlng.lat, zoom, center.y, scale)
+		};
+	}
+
+	/** Transform tile number to lng */
+	private xToLng(x: number, zoom: number): number {
+		return x / Math.pow(2, zoom) * 360.0 - 180.0;
+	}
+
+	/** Transform tile number to lat */
+	private yToLat(y: number, zoom: number): number {
+		return Math.atan(Math.sinh(Math.PI * (1 - 2 * y / Math.pow(2, zoom)))) / Math.PI * 180.0;
 	}
 
 	/** Get the type of an overlay */
 	private overlayType(overlay: StaticMapOverlay): string {
 		if ((overlay as StaticMapImage).bounds !== undefined) {
 			return 'image';
+		} else if ((overlay as StaticMapCircle).center !== undefined) {
+			return 'circle';
 		} else {
 			return 'line';
 		}
@@ -235,23 +307,31 @@ export class StaticMap {
 	 * @returns Maximal enclosing bounds of this overlay
 	 */
 	private overlayExtent(overlay: StaticMapOverlay): LatLngBounds {
-		const hasBounds = (o: StaticMapOverlay): o is StaticMapImage => ((o as StaticMapImage).bounds !== undefined);
-		if (hasBounds(overlay)) {
-			return overlay.bounds;
-		} else {
-			const min = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr < prev) ? curr : prev));
-			const max = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr > prev) ? curr : prev));
-			const bounds = (points: Array<LatLng>): LatLngBounds => ({
-				min: {
-					lat: min(points.map(p => p.lat)),
-					lng: min(points.map(p => p.lng))
-				},
-				max: {
-					lat: max(points.map(p => p.lat)),
-					lng: max(points.map(p => p.lng))
-				}
-			});
-			return bounds((overlay as StaticMapLine).points);
+		const type = this.overlayType(overlay);
+		switch (type) {
+			case 'image':
+				return (overlay as StaticMapImage).bounds;
+			case 'circle': {
+				const c = (overlay as StaticMapCircle).center;
+				return { min: c, max: c };
+			}
+			case 'line': {
+				const min = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr < prev) ? curr : prev));
+				const max = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr > prev) ? curr : prev));
+				const bounds = (points: Array<LatLng>): LatLngBounds => ({
+					min: {
+						lat: min(points.map(p => p.lat)),
+						lng: min(points.map(p => p.lng))
+					},
+					max: {
+						lat: max(points.map(p => p.lat)),
+						lng: max(points.map(p => p.lng))
+					}
+				});
+				return bounds((overlay as StaticMapLine).points);
+			}
+			default:
+				throw new Error(`Unknown overlay type "${type}"`);
 		}
 	}
 
@@ -278,7 +358,7 @@ export class StaticMap {
 				lng: max(arr.map(b => b.max.lng))
 			}
 		});
-		return union(this.overlays.map(this.overlayExtent));
+		return union(this.overlays.map(this.overlayExtent.bind(this)));
 	}
 
 	/**
@@ -306,6 +386,35 @@ export class StaticMap {
 	}
 
 	/**
+	 * Load a tile image
+	 * @param zoom The zoom level of the tile
+	 * @param tileX The x coordinate
+	 * @param tileY The y coordinate
+	 * @returns An image object
+	 */
+	private async loadTile(zoom: number, tileX: number, tileY: number): Promise<Canvas.Image> {
+		const url = this.options.tileURL
+			.replace('{z}', zoom.toString())
+			.replace('{x}', tileX.toString())
+			.replace('{y}', tileY.toString());
+		let src = url;
+		if (this.cache !== undefined) {
+			const td: TileData = { z: zoom, x: tileX, y: tileY };
+			try {
+				const csrc = await this.cache.pass(td, () => base64img(src, 'image/png'));
+				if (csrc !== undefined) {
+					src = csrc;
+				}
+			} catch (error) {
+				console.error(error);
+				throw error;
+			}
+		}
+		const image = await Canvas.loadImage(src);
+		return image;
+	}
+
+	/**
 	 * Main function to generate the image canvas
 	 * @returns A canvas object containing the map tiles and overlays
 	 */
@@ -314,7 +423,7 @@ export class StaticMap {
 		if (extent === undefined) {
 			throw new Error('Undefined extent');
 		}
-		const { width, height, paddingX, paddingY, backgroundColor, grayscale, tileSize, tileURL } = this.options;
+		const { width, height, paddingX, paddingY, scaling, backgroundColor, grayscale, tileSize } = this.options;
 		const canvas = Canvas.createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 		// backgound
@@ -325,49 +434,33 @@ export class StaticMap {
 		// tiles
 		const zoom = this.calculateZoom(extent);
 		const center = this.boundsCenter(extent);
-		const centerX = this.lngToX(center.lng, zoom);
-		const centerY = this.latToY(center.lat, zoom);
-		const scaleX = (width - 2 * paddingX) / Math.abs(
-			this.lngToPx(extent.max.lng, zoom, centerX) - this.lngToPx(extent.min.lng, zoom, centerX)
-		);
-		const scaleY = (height - 2 * paddingY) / Math.abs(
-			this.latToPy(extent.min.lat, zoom, centerY) - this.latToPy(extent.max.lat, zoom, centerY)
-		);
-		const scale = Math.min(scaleX, scaleY);
+		const centerXY: Point = this.latlngToXY(center, zoom);
+		let scale: number | undefined;
+		if (scaling) {
+			const scaleX = (width - 2 * paddingX) / Math.abs(
+				this.lngToPx(extent.max.lng, zoom, centerXY.x) - this.lngToPx(extent.min.lng, zoom, centerXY.x)
+			);
+			const scaleY = (height - 2 * paddingY) / Math.abs(
+				this.latToPy(extent.min.lat, zoom, centerXY.y) - this.latToPy(extent.max.lat, zoom, centerXY.y)
+			);
+			scale = Math.min(scaleX, scaleY);
+		}
 		// console.log(`scale=(${scaleX}, ${scaleY}) => ${scale}`);
-		const minX = Math.floor(centerX - 0.5 * width / tileSize);
-		const maxX = Math.ceil(centerX + 0.5 * width / tileSize);
-		const minY = Math.floor(centerY - 0.5 * height / tileSize);
-		const maxY = Math.ceil(centerY + 0.5 * height / tileSize);
+		const minX = Math.floor(centerXY.x - 0.5 * width / tileSize);
+		const maxX = Math.ceil(centerXY.x + 0.5 * width / tileSize);
+		const minY = Math.floor(centerXY.y - 0.5 * height / tileSize);
+		const maxY = Math.ceil(centerXY.y + 0.5 * height / tileSize);
 		const maxTile = Math.pow(2, zoom);
 		for (let x = minX; x < maxX; x++) {
 			for (let y = minY; y < maxY; y++) {
 				const tileX = (x + maxTile) % maxTile;
 				const tileY = (y + maxTile) % maxTile;
-				const url = tileURL
-					.replaceAll('{z}', zoom.toString())
-					.replaceAll('{x}', tileX.toString())
-					.replaceAll('{y}', tileY.toString());
-				let src = url;
-				if (this.cache !== undefined) {
-					const td: TileData = { z: zoom, x: tileX, y: tileY };
-					try {
-						const csrc = await this.cache.pass(td, () => base64img(src, 'image/png'));
-						if (csrc !== undefined) {
-							src = csrc;
-						}
-					} catch (error) {
-						console.error(error);
-						throw error;
-					}
-				}
-				const image = await Canvas.loadImage(src);
-				const px = this.xToPx(x, centerX, scale);
-				const py = this.yToPy(y, centerY, scale);
-				const dx = this.xToPx(x + 1, centerX, scale) - px;
-				const dy = this.yToPy(y + 1, centerY, scale) - py;
-				// console.log(`url='${url}', imgcoord=(${px}, ${py}, ${dx}, ${dy})`);
-				ctx.drawImage(image, px, py, dx, dy);
+				const image = await this.loadTile(zoom, tileX, tileY);
+				const p = this.xyToPxPy({ x, y }, centerXY, scale);
+				const dx = this.xToPx(x + 1, centerXY.x, scale) - p.x;
+				const dy = this.yToPy(y + 1, centerXY.y, scale) - p.y;
+				// console.log(`url='${url}', imgcoord=(${p.x}, ${p.y}, ${dx}, ${dy})`);
+				ctx.drawImage(image, p.x, p.y, dx, dy);
 			}
 		}
 		// grayscaling
@@ -389,10 +482,10 @@ export class StaticMap {
 				case 'image': {
 					const imgdata = overlay as StaticMapImage;
 					const img = await Canvas.loadImage(imgdata.src);
-					const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerX, scale);
-					const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerY, scale);
-					const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerX, scale) - x;
-					const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerY, scale) - y;
+					const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerXY.x, scale);
+					const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerXY.y, scale);
+					const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerXY.x, scale) - x;
+					const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerXY.y, scale) - y;
 					// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
 					ctx.drawImage(img, x, y, dx, dy);
 					break;
@@ -400,18 +493,34 @@ export class StaticMap {
 				case 'line': {
 					const linedata = overlay as StaticMapLine;
 					if (linedata.points.length > 1) {
-						const [x0, y0] = this.latlngToPxPy(linedata.points[0], zoom, centerX, centerY, scale);
+						const p0 = this.latlngToPxPy(linedata.points[0], zoom, centerXY, scale);
 						// console.log(`[line] moving to (${x0}, ${y0})`);
-						ctx.moveTo(x0, y0);
+						ctx.moveTo(p0.x, p0.y);
 						for (const p of linedata.points.slice(1)) {
-							const [px, py] = this.latlngToPxPy(p, zoom, centerX, centerY, scale);
+							const pxy = this.latlngToPxPy(p, zoom, centerXY, scale);
 							// console.log(`[line] drawing to (${px}, ${py})`);
-							ctx.lineTo(px, py);
+							ctx.lineTo(pxy.x, pxy.y);
 						}
 						ctx.strokeStyle = linedata.options.strokeStyle;
 						ctx.lineWidth = linedata.options.lineWidth;
 						ctx.lineCap = linedata.options.lineCap;
 						ctx.lineJoin = linedata.options.lineJoin;
+						ctx.stroke();
+					}
+					break;
+				}
+				case 'circle': {
+					const circdata = overlay as StaticMapCircle;
+					const ccenter = this.latlngToPxPy(circdata.center, zoom, centerXY, scale);
+					ctx.beginPath();
+					ctx.arc(ccenter.x, ccenter.y, circdata.options.radius, 0, 2*Math.PI, false);
+					if (circdata.options.fillStyle) {
+						ctx.fillStyle = circdata.options.fillStyle;
+						ctx.fill();
+					}
+					if (circdata.options.strokeStyle && circdata.options.lineWidth > 0) {
+						ctx.strokeStyle = circdata.options.strokeStyle;
+						ctx.lineWidth = circdata.options.lineWidth;
 						ctx.stroke();
 					}
 					break;

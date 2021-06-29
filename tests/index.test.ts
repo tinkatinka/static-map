@@ -33,10 +33,11 @@ describe('Test map rendering', () => {
 		const buffer = await map.renderToBuffer();
 		writeFileSync('/tmp/map_zille.png', buffer);
 	});
-	it('should render a map with a blue line from Paris to Berlin to Munich and back', async () => {
+	it('should render a map with a blue line from Paris to Berlin to Munich and back and a red dot on Hamburg', async () => {
 		const map = new StaticMap({
 			paddingX: 32,
 			paddingY: 32,
+			scaling: false,
 			tileCache: '/tmp/tiles'
 		})
 			.addLines([
@@ -46,6 +47,10 @@ describe('Test map rendering', () => {
 				{ lat: 52.5, lng: 13.4 }
 			], {
 				strokeStyle: 'blue'
+			})
+			.addCircle({ lat: 53.6, lng: 10.0 }, {
+				strokeStyle: 'red',
+				fillStyle: 'rgba(255,0,0,0.3)'
 			});
 		const buffer = await map.renderToBuffer();
 		writeFileSync('/tmp/map_line.png', buffer);

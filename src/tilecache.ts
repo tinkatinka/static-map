@@ -75,9 +75,9 @@ export class TileCache {
 	 */
 	private tilePath(data: TileData): string {
 		const fn = TileCache.fnTemplate
-			.replaceAll('{z}', data.z.toString())
-			.replaceAll('{x}', data.x.toString())
-			.replaceAll('{y}', data.y.toString());
+			.replace('{z}', data.z.toString())
+			.replace('{x}', data.x.toString())
+			.replace('{y}', data.y.toString());
 
 		return pathJoin(this.path, fn);
 	}

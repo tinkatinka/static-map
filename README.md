@@ -25,6 +25,7 @@ The constructor can be called with an optional `StaticMapOptions` object, overri
 	paddingX: number;         // horizontal padding in pixels [default: 0]
 	paddingY: number;         // vertical padding in pixels [default: 0]
 	extent?: LatLngBounds;    // extent of the map [default: `undefined`]
+	scaling: boolean;         // scale image to match size and padding exactly [default: true]
 	tileURL: string;          // template string for tile URL [default: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png']
 	tileSize: number;         // size of tiles [default: 256]
 	tileMaxZoom: number;      // maximum zoom available for tiles [default: 20]
@@ -57,8 +58,6 @@ otherwise the image generation will fail.
 ### Overlays
 
 #### Lines
-Can be added using
-
 ```ts
 .addLines(points: LatLng[], options?: Partial<StaticMapLineOptions>);
 
@@ -71,21 +70,32 @@ Options:
 
 ```ts
 interface StaticMapLineOptions {
-	strokeStyle: string;                  // css stroke style [default: 'black'],
-	lineWidth: number;                    // line width in pixels [default: 1.0],
+	strokeStyle: string;                  // css stroke style [default: 'black']
+	lineWidth: number;                    // line width in pixels [default: 1.0]
 	lineCap: 'butt' | 'round' | 'square'  // [default: 'round']
 	lineJoin: 'bevel' | 'round' | 'miter' // [default: 'round']
 }
 ```
 
-#### Images
-Can be added using
+#### Circles
+```ts
+.addCircle(center: LatLng, options?: Partial<StaticMapCircleOptions>);
+```
+
+Options:
 
 ```ts
-.addImage(
-	src: string,
-	bounds: LatLngBounds
-);
+interface StaticMapCircleOptions {
+	radius: number;       // in pixels [default: 5.0]
+	strokeStyle?: string; // css stroke style or undefined for no stroke [default: 'black']
+	lineWidth: number;    // line width in pixels [default: 1.0]
+	fillStyle?: string;   // css fill style or undefined for no fill [default: 'rgba(0, 0, 0, 0.3)']
+}
+```
+
+#### Images
+```ts
+.addImage(src: string, bounds: LatLngBounds);
 ```
 
 ### Map image
