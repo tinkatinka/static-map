@@ -1,0 +1,21 @@
+# dependencies
+npm-debug.log*
+/node_modules
+
+# production
+/.build
+/build
+/dist
+
+# typescript
+.tsbuildinfo
+
+# MacOS
+.DS_Store
+
+# env
+.env
+.env.local
+
+# Visual Studio Code
+.vscode
