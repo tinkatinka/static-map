@@ -55,4 +55,23 @@ describe('Test map rendering', () => {
 		const buffer = await map.renderToBuffer();
 		writeFileSync('/tmp/map_line.png', buffer);
 	});
+	it('should render a map of Berlin with custom drawing', async () => {
+		const map = new StaticMap({
+			extent: {
+				min: { lat: 52.4, lng: 13.3 },
+				max: { lat: 52.6, lng: 13.5 }
+			},
+			grayscale: true,
+			tileCache: '/tmp/tiles'
+		});
+		const canvas = await map.renderToCanvas();
+		const ctx = canvas.getContext('2d');
+		ctx.textAlign = 'end';
+		ctx.textBaseline = 'bottom';
+		ctx.font = '16px sans-serif';
+		ctx.fillStyle = 'blue';
+		ctx.fillText('© OpenStreetMap contributors', canvas.width-8, canvas.height-8);
+		const buffer = await canvas.toBuffer();
+		writeFileSync('/tmp/map_text.png', buffer);
+	});
 });

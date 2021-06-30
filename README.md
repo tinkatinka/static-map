@@ -8,12 +8,12 @@ To generate the final image [node-canvas](https://github.com/Automattic/node-can
 
 ## Installation
 ```bash
-$ npm install static-map
+$ npm install @tinkatinka/static-map
 ```
 
 ## Usage
 ```ts
-import { StaticMap } from 'static-map';
+import { StaticMap } from '@tinkatinka/static-map';
 const map = new StaticMap(...);
 ```
 The constructor can be called with an optional `StaticMapOptions` object, overriding the defaults:
@@ -107,45 +107,69 @@ Can be obtained via async functions
 	/* or */
 
 .renderToBuffer(): Promise<Buffer>
+
+	/* or */
+
+.renderToCanvas(): Promise<Canvas>
 ```
-Both of them will fail if the `.extent` of the map is not explicitly defined or cannot be computed (because there are
-no overlay images).
+
+All of them will fail if the `.extent` of the map is not explicitly defined or cannot be computed (because there are
+no overlays).
 
 ### Examples
 
 #### with explicit extent
 ```ts
-import { StaticMap, StaticMapOptions } from 'static-map';
-const mapopt: StaticMapOptions = {
+import { StaticMap } from '@tinkatinka/static-map';
+const map = new StaticMap({
 	width: 512,
 	height: 512,
 	extent: {
 		min: { lat: 52.4, lng: 13.3 },
 		max: { lat: 52.6, lng: 13.5 }
 	}
-};
-const map = new StaticMap(mapopt)
+});
 const src = await map.renderToDataURL();
 ...
 ```
 
 #### with overlay image and computed extent
 ```ts
-import { LatLngBounds, StaticMap, StaticMapOptions } from 'static-map';
-const mapopt: StaticMapOptions = {
+import { StaticMap } from '@tinkatinka/static-map';
+const map = new StaticMap({
 	width: 512,
 	height: 512,
 	paddingX: 32,
 	paddingY: 32,
 	tileCache: '/tmp/tiles'
-};
-const bounds: LatLngBounds = {
-	min: { lat: 1.0, lng: 2.0 },
-	max: { lat: 2.0, lng: 3.0 }
-};
-const map = new StaticMap(mapopt)
-	.addImage('https://my.funky.src/image.png', bounds);
+})
+	.addImage('https://my.funky.src/image.png', {
+		min: { lat: 1.0, lng: 2.0 },
+		max: { lat: 2.0, lng: 3.0 }
+	});
 const buffer = await map.renderToBuffer();
+...
+```
+
+#### rendering to Canvas for custom drawing
+```ts
+import { StaticMap } from '@tinkatinka/static-map'
+const map = new StaticMap({
+	extent: {
+		min: { lat: 52.4, lng: 13.3 },
+		max: { lat: 52.6, lng: 13.5 }
+	},
+	grayscale: true,
+	tileCache: '/tmp/tiles'
+});
+const canvas = await map.renderToCanvas();
+const ctx = canvas.getContext('2d');
+ctx.textAlign = 'end';
+ctx.textBaseline = 'bottom';
+ctx.font = '16px sans-serif';
+ctx.fillStyle = 'blue';
+ctx.fillText('© OpenStreetMap contributors', canvas.width-8, canvas.height-8);
+const buffer = await canvas.toBuffer();
 ...
 ```
 

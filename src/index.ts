@@ -110,7 +110,8 @@ export class StaticMap {
 		fillStyle: 'rgba(0, 0, 0, 0.3)'
 	};
 
-	options: StaticMapOptions;
+	/** The options provided to this instance */
+	readonly options: StaticMapOptions;
 
 	/**
 	 * The extent of this map. Either as specified explicitly in the options ({@link StaticMapOptions}) or computed
@@ -133,6 +134,14 @@ export class StaticMap {
 		this.options = { ...StaticMap.defaultOptions, ...options };
 		this.cache = this.options.tileCache ? new TileCache(this.options.tileCache) : undefined;
 		this.overlays = [];
+	}
+
+	/**
+	 * Render to canvas
+	 * @returns A Canvas object containing the map tiles and overlays
+	 */
+	async renderToCanvas(): Promise<Canvas.Canvas> {
+		return this.createCanvas();
 	}
 
 	/**
