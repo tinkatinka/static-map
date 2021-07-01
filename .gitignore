@@ -7,6 +7,12 @@ npm-debug.log*
 /build
 /dist
 
+#cache
+/.cache
+
+#jest
+__diff_output__
+
 # typescript
 .tsbuildinfo
 

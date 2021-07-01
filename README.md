@@ -20,21 +20,21 @@ The constructor can be called with an optional `StaticMapOptions` object, overri
 
 ```ts
 {
-	width: number;            // width of the image in pixels [default: 512]
-	height: number;           // height of the image in pixels [default: 512]
-	paddingX: number;         // horizontal padding in pixels [default: 0]
-	paddingY: number;         // vertical padding in pixels [default: 0]
-	extent?: LatLngBounds;    // extent of the map [default: `undefined`]
-	scaling: boolean;         // scale image to match size and padding exactly [default: true]
-	tileURL: string;          // template string for tile URL [default: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png']
-	tileSize: number;         // size of tiles [default: 256]
-	tileMaxZoom: number;      // maximum zoom available for tiles [default: 20]
-	tileCache?: string;       // path to a cache directory for tiles [default: `undefined`]
-	backgroundColor?: string; // image background color (CSS string) [default: `undefined`]
-	grayscale: boolean;       // apply a grayscale filter to map tiles (not overlays) [default: `false`]
+  width: number;            // width of the image in pixels [default: 512]
+  height: number;           // height of the image in pixels [default: 512]
+  paddingX: number;         // horizontal padding in pixels [default: 0]
+  paddingY: number;         // vertical padding in pixels [default: 0]
+  extent?: LatLngBounds;    // extent of the map [default: `undefined`]
+  scaling: boolean;         // scale image to match size and padding exactly [default: `true`]
+  tileURL: string;          // template string for tile URL [default: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png']
+  tileSize: number;         // size of tiles [default: 256]
+  tileMaxZoom: number;      // maximum zoom available for tiles [default: 20]
+  tileCache?: string;       // path to a cache directory for tiles [default: `undefined`]
+  backgroundColor?: string; // image background color (CSS string) [default: `undefined`]
+  grayscale: boolean;       // apply a grayscale filter to map tiles (not overlays) [default: `false`]
 }
 ```
-**Note**: Either an explicit `extent` of the map *or* at least one overlay image (see below) **must** be defined,
+**Note**: Either an explicit `extent` of the map *or* at least one overlay (see below) **must** be defined,
 otherwise the image generation will fail.
 
 ### Types
@@ -42,16 +42,16 @@ otherwise the image generation will fail.
 #### LatLng
 ```ts
 {
-	lat: number; // latitude
-	lng: number; // longitude
+  lat: number; // latitude
+  lng: number; // longitude
 }
 ```
 
 #### LatLngBounds
 ```ts
 { 
-	min: LatLng; // minimum point
-	max: LatLng; // maximum point
+  min: LatLng; // minimum point
+  max: LatLng; // maximum point
 }
 ```
 
@@ -59,21 +59,19 @@ otherwise the image generation will fail.
 
 #### Lines
 ```ts
-.addLines(points: LatLng[], options?: Partial<StaticMapLineOptions>);
-
-	/* or */
-
 .addLine(src: LatLng, dst: LatLng, options?: Partial<StaticMapLineOptions>);
+
+.addLines(points: LatLng[], options?: Partial<StaticMapLineOptions>);
 ```
 
 Options:
 
 ```ts
 interface StaticMapLineOptions {
-	strokeStyle: string;                  // css stroke style [default: 'black']
-	lineWidth: number;                    // line width in pixels [default: 1.0]
-	lineCap: 'butt' | 'round' | 'square'  // [default: 'round']
-	lineJoin: 'bevel' | 'round' | 'miter' // [default: 'round']
+  strokeStyle: string;                  // css stroke style [default: 'black']
+  lineWidth: number;                    // line width in pixels [default: 1.0]
+  lineCap: 'butt' | 'round' | 'square'  // [default: 'round']
+  lineJoin: 'bevel' | 'round' | 'miter' // [default: 'round']
 }
 ```
 
@@ -86,10 +84,10 @@ Options:
 
 ```ts
 interface StaticMapCircleOptions {
-	radius: number;       // in pixels [default: 5.0]
-	strokeStyle?: string; // css stroke style or undefined for no stroke [default: 'black']
-	lineWidth: number;    // line width in pixels [default: 1.0]
-	fillStyle?: string;   // css fill style or undefined for no fill [default: 'rgba(0, 0, 0, 0.3)']
+  radius: number;       // in pixels [default: 5.0]
+  strokeStyle?: string; // css stroke style or undefined for no stroke [default: 'black']
+  lineWidth: number;    // line width in pixels [default: 1.0]
+  fillStyle?: string;   // css fill style or undefined for no fill [default: 'rgba(0, 0, 0, 0.3)']
 }
 ```
 
@@ -98,17 +96,13 @@ interface StaticMapCircleOptions {
 .addImage(src: string, bounds: LatLngBounds);
 ```
 
-### Map image
+### Output
 Can be obtained via async functions
 
 ```ts
 .renderToDataURL(): Promise<string>
 
-	/* or */
-
 .renderToBuffer(): Promise<Buffer>
-
-	/* or */
 
 .renderToCanvas(): Promise<Canvas>
 ```
@@ -116,51 +110,51 @@ Can be obtained via async functions
 All of them will fail if the `.extent` of the map is not explicitly defined or cannot be computed (because there are
 no overlays).
 
-### Examples
+## Examples
 
-#### with explicit extent
+### with explicit extent
 ```ts
 import { StaticMap } from '@tinkatinka/static-map';
 const map = new StaticMap({
-	width: 512,
-	height: 512,
-	extent: {
-		min: { lat: 52.4, lng: 13.3 },
-		max: { lat: 52.6, lng: 13.5 }
-	}
+  width: 512,
+  height: 512,
+  extent: {
+  	min: { lat: 52.4, lng: 13.3 },
+  	max: { lat: 52.6, lng: 13.5 }
+  }
 });
 const src = await map.renderToDataURL();
 ...
 ```
 
-#### with overlay image and computed extent
+### with overlay image and computed extent
 ```ts
 import { StaticMap } from '@tinkatinka/static-map';
 const map = new StaticMap({
-	width: 512,
-	height: 512,
-	paddingX: 32,
-	paddingY: 32,
-	tileCache: '/tmp/tiles'
+  width: 512,
+  height: 512,
+  paddingX: 32,
+  paddingY: 32,
+  tileCache: '/tmp/tiles'
 })
-	.addImage('https://my.funky.src/image.png', {
-		min: { lat: 1.0, lng: 2.0 },
-		max: { lat: 2.0, lng: 3.0 }
-	});
+  .addImage('https://my.funky.src/image.png', {
+  	min: { lat: 1.0, lng: 2.0 },
+  	max: { lat: 2.0, lng: 3.0 }
+  });
 const buffer = await map.renderToBuffer();
 ...
 ```
 
-#### rendering to Canvas for custom drawing
+### rendering to Canvas for custom drawing
 ```ts
 import { StaticMap } from '@tinkatinka/static-map'
 const map = new StaticMap({
-	extent: {
-		min: { lat: 52.4, lng: 13.3 },
-		max: { lat: 52.6, lng: 13.5 }
-	},
-	grayscale: true,
-	tileCache: '/tmp/tiles'
+  extent: {
+  	min: { lat: 52.4, lng: 13.3 },
+  	max: { lat: 52.6, lng: 13.5 }
+  },
+  grayscale: true,
+  tileCache: '/tmp/tiles'
 });
 const canvas = await map.renderToCanvas();
 const ctx = canvas.getContext('2d');
