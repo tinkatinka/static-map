@@ -1,10 +1,10 @@
 import { fetch } from './fetch';
 
 
-const base64img = async (url: string, mimetype: string = 'image/png'): Promise<string> => {
+const base64img = async (url: string, mimetype: string = 'image/png', userAgent: string = 'StaticMap/1.0'): Promise<string> => {
 	const response = await fetch(url, {
 		headers: {
-			'User-Agent': 'StaticMap/1.0 (+http://www.everyone-energy/impressum/'
+			'User-Agent': userAgent
 		}
 	});
 	if (response.status !== 200) {

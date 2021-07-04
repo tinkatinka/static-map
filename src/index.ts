@@ -71,6 +71,8 @@ export interface StaticMapOptions {
 	tileMaxZoom: number;
 	/** Tile cache base path or `undefined` if no cache shall be used */
 	tileCache?: string;
+	/** User agent string to transmit when loading tiles */
+	userAgent?: string;
 	/** Background color in CSS notation (only relevant for transparent tiles) */
 	backgroundColor?: string;
 	/** Grayscale filter for map tiles (not image overlays(!)) */
@@ -410,7 +412,7 @@ export class StaticMap {
 		if (this.cache !== undefined) {
 			const td: TileData = { z: zoom, x: tileX, y: tileY };
 			try {
-				const csrc = await this.cache.pass(td, () => base64img(src, 'image/png'));
+				const csrc = await this.cache.pass(td, () => base64img(src, 'image/png', this.options.userAgent));
 				if (csrc !== undefined) {
 					src = csrc;
 				}
@@ -418,6 +420,8 @@ export class StaticMap {
 				console.error(error);
 				throw error;
 			}
+		} else {
+			src = await base64img(src, 'image/png', this.options.userAgent);
 		}
 		const image = await Canvas.loadImage(src);
 		return image;
