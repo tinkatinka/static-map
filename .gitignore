@@ -12,6 +12,7 @@ npm-debug.log*
 
 #jest
 __diff_output__
+tests/diffs
 
 # typescript
 .tsbuildinfo

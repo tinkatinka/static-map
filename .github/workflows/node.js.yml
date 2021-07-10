@@ -50,7 +50,15 @@ jobs:
           repo-cache-
 
     - name: Test
-      run: npm run test
+      run: |
+        mkdir tests/diffs
+        npm run test
+
+    - name: Debug
+      if: ${{ failure() }}
+      run: |
+        ls -la tests/
+        ls -la tests/diffs
 
     - name: Archive test artifacts
       uses: actions/upload-artifact@v2

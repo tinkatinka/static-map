@@ -85,13 +85,13 @@ describe('Test map rendering', () => {
 			grayscale: true,
 			tileCache: cachePath
 		})
-			.addText('© OpenStreetMap contributors', { lat: 52.6, lng: 13.5 }, {
+			.addText('© OpenStreetMap contributors', { lat: 52.4, lng: 13.5645 }, {
 				textAlign: 'end',
 				textBaseline: 'bottom',
 				font: '16px sans-serif',
 				fillStyle: 'blue',
 				px: -8,
-				py: -8
+				py: -7
 			});
 		const buffer = await map.renderToBuffer();
 		expect(buffer).toMatchImageSnapshot(iso('map_text'));
