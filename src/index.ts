@@ -4,6 +4,8 @@ import { TileCache, TileData } from './tilecache';
 import base64img from './base64img';
 
 
+type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+
 export interface LatLng {
 	lat: number;
 	lng: number;
@@ -19,7 +21,23 @@ interface Point {
 	y: number;
 }
 
-export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle;
+export interface StrokeOptions {
+	strokeStyle: string | CanvasGradient | CanvasPattern;
+	lineWidth: number;
+	lineJoin: 'bevel' | 'round' | 'miter';
+	lineCap: 'butt' | 'round' | 'square';
+}
+
+export interface FillOptions {
+	fillStyle: string | CanvasGradient | CanvasPattern;
+}
+
+export type StrokeFillOptions = Optional<StrokeOptions, 'strokeStyle'> & Optional<FillOptions, 'fillStyle'>;
+
+export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapText;
+
+type StaticMapOverlayType = 'image' | 'line' | 'circle' | 'text';
+
 
 export interface StaticMapImage {
 	src: string;
@@ -31,23 +49,27 @@ export interface StaticMapLine {
 	options: StaticMapLineOptions;
 }
 
-export interface StaticMapLineOptions {
-	strokeStyle: string;
-	lineWidth: number;
-	lineJoin: 'bevel' | 'round' | 'miter';
-	lineCap: 'butt' | 'round' | 'square';
-}
+export type StaticMapLineOptions = StrokeOptions;
 
 export interface StaticMapCircle {
 	center: LatLng;
 	options: StaticMapCircleOptions;
 }
 
-export interface StaticMapCircleOptions {
+export interface StaticMapCircleOptions extends StrokeFillOptions {
 	radius: number;
-	strokeStyle?: string;
-	lineWidth: number;
-	fillStyle?: string;
+}
+
+export interface StaticMapText {
+	text: string;
+	anchor: LatLng;
+	options: StaticMapTextOptions;
+}
+
+export interface StaticMapTextOptions extends CanvasTextDrawingStyles, StrokeFillOptions {
+	px: number;
+	py: number;
+	maxWidth?: number;
 }
 
 export interface StaticMapOptions {
@@ -107,9 +129,24 @@ export class StaticMap {
 	/** Default circle options */
 	private static defaultCircleOptions: StaticMapCircleOptions = {
 		radius: 5.0,
-		strokeStyle: 'black',
+		strokeStyle: 'rgba(0.5, 0.5, 0.5, 0.5)',
 		lineWidth: 1.0,
-		fillStyle: 'rgba(0, 0, 0, 0.3)'
+		lineCap: 'round',
+		lineJoin: 'round',
+		fillStyle: 'rgba(0, 0, 0, 0.5)'
+	};
+	/** Default text options */
+	private static defaultTextOptions: StaticMapTextOptions = {
+		px: 0,
+		py: 0,
+		textAlign: 'center',
+		textBaseline: 'middle',
+		direction: 'inherit',
+		font: '12px sans-serif',
+		lineWidth: 1.0,
+		lineCap: 'round',
+		lineJoin: 'round',
+		fillStyle: 'black'
 	};
 
 	/** The options provided to this instance */
@@ -225,6 +262,21 @@ export class StaticMap {
 		});
 	}
 
+	/**
+	 * Add some text
+	 * @param text The text to add
+	 * @param anchor The anchor point for the text
+	 * @param options Options how to draw the text (optional)
+	 * @returns `this`
+	 */
+	addText(text: string, anchor: LatLng, options?: Partial<StaticMapTextOptions>): StaticMap {
+		return this.addOverlay({
+			text: text,
+			anchor: anchor,
+			options: { ...StaticMap.defaultTextOptions, ...options }
+		});
+	}
+
 
 	/** Calculates the center of provided bounds */
 	private boundsCenter(bounds: LatLngBounds): LatLng {
@@ -302,11 +354,13 @@ export class StaticMap {
 	}
 
 	/** Get the type of an overlay */
-	private overlayType(overlay: StaticMapOverlay): string {
+	private overlayType(overlay: StaticMapOverlay): StaticMapOverlayType {
 		if ((overlay as StaticMapImage).bounds !== undefined) {
 			return 'image';
 		} else if ((overlay as StaticMapCircle).center !== undefined) {
 			return 'circle';
+		} else if ((overlay as StaticMapText).anchor !== undefined) {
+			return 'text';
 		} else {
 			return 'line';
 		}
@@ -340,6 +394,10 @@ export class StaticMap {
 					}
 				});
 				return bounds((overlay as StaticMapLine).points);
+			}
+			case 'text': {
+				const a = (overlay as StaticMapText).anchor;
+				return { min: a, max: a };
 			}
 			default:
 				throw new Error(`Unknown overlay type "${type}"`);
@@ -535,6 +593,24 @@ export class StaticMap {
 						ctx.strokeStyle = circdata.options.strokeStyle;
 						ctx.lineWidth = circdata.options.lineWidth;
 						ctx.stroke();
+					}
+					break;
+				}
+				case 'text': {
+					const textdata = overlay as StaticMapText;
+					const anchor = this.latlngToPxPy(textdata.anchor, zoom, centerXY, scale);
+					const opts = textdata.options;
+					ctx.textAlign = opts.textAlign;
+					ctx.textBaseline = opts.textBaseline;
+					ctx.direction = opts.direction;
+					ctx.font = opts.font;
+					if (opts.fillStyle) {
+						ctx.fillStyle = opts.fillStyle;
+						ctx.fillText(textdata.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
+					}
+					if (opts.strokeStyle) {
+						ctx.strokeStyle = opts.strokeStyle;
+						ctx.strokeText(textdata.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
 					}
 					break;
 				}

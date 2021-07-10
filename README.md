@@ -91,6 +91,28 @@ interface StaticMapCircleOptions {
 }
 ```
 
+#### Text
+```ts
+.addText(text: string, anchor: LatLng, options?: Partial<StaticMapTextOptions>);
+```
+
+Options:
+
+```ts
+interface StaticMapTextOptions {
+  px: number;           // padding x [default: 0]
+  py: number;           // padding y [default: 0]
+  maxWidth?: number;    // text max width [default: undefined]
+  direction: string;    // default: 'ltr'
+  font: string;         // default: '12px sans-serif'
+  textAlign: string;    // default: 'center'
+  textBaseline: string; // default: 'middle'
+  strokeStyle?: string; // css stroke style or undefined for no stroke [default: undefined]
+  lineWidth: number;    // line width in pixels [default: 1.0]
+  fillStyle?: string;   // css fill style or undefined for no fill [default: 'black']
+}
+```
+
 #### Images
 ```ts
 .addImage(src: string, bounds: LatLngBounds);

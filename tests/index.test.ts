@@ -76,6 +76,26 @@ describe('Test map rendering', () => {
 		expect(buffer).toMatchImageSnapshot(iso('map_line'));
 		// writeFileSync('/tmp/map_line.png', buffer);
 	});
+	it('should render a map with text', async () => {
+		const map = new StaticMap({
+			extent: {
+				min: { lat: 52.4, lng: 13.3 },
+				max: { lat: 52.6, lng: 13.5 }
+			},
+			grayscale: true,
+			tileCache: cachePath
+		})
+			.addText('© OpenStreetMap contributors', { lat: 52.6, lng: 13.5 }, {
+				textAlign: 'end',
+				textBaseline: 'bottom',
+				font: '16px sans-serif',
+				fillStyle: 'blue',
+				px: -8,
+				py: -8
+			});
+		const buffer = await map.renderToBuffer();
+		expect(buffer).toMatchImageSnapshot(iso('map_text'));
+	});
 	it('should render a map of Berlin with custom drawing', async () => {
 		const map = new StaticMap({
 			extent: {
@@ -91,7 +111,7 @@ describe('Test map rendering', () => {
 		ctx.textBaseline = 'bottom';
 		ctx.font = '16px sans-serif';
 		ctx.fillStyle = 'blue';
-		ctx.fillText('© OpenStreetMap contributors', canvas.width-8, canvas.height-8);
+		ctx.fillText('© OpenStreetMap contributors', canvas.width - 8, canvas.height - 8);
 		const buffer = await canvas.toBuffer();
 		expect(buffer).toMatchImageSnapshot(iso('map_text'));
 		// writeFileSync('/tmp/map_text.png', buffer);
