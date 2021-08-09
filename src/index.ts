@@ -1,4 +1,5 @@
 import * as Canvas from 'canvas';
+import merge from 'lodash.merge';
 
 import { TileCache, TileData } from './tilecache';
 import base64img from './base64img';
@@ -77,10 +78,20 @@ export interface StaticMapOptions {
 	width: number;
 	/** Height of the map image in pixels */
 	height: number;
-	/** Horizontal padding of the map in pixels (beyond bounds) */
-	paddingX: number;
-	/** Vertical padding of the map in pixels (beyond bounds) */
-	paddingY: number;
+	/** Padding of the map in pixels (beyond bounds) */
+	padding: number;
+	/** Horizontal padding (overrides `padding`) */
+	paddingX?: number;
+	/** Vertical padding (overrides `padding`) */
+	paddingY?: number;
+	/** Left padding (overrides `paddingX`) */
+	paddingLeft?: number;
+	/** Right padding (overrides `paddingX`) */
+	paddingRight?: number;
+	/** Top padding (overrides `paddingY`) */
+	paddingTop?: number;
+	/** Bottom padding (overrides `paddingY`) */
+	paddingBottom?: number;
 	/** Extent of the map */
 	extent?: LatLngBounds;
 	/** Scale map to match size and padding exactly */
@@ -111,8 +122,7 @@ export class StaticMap {
 	private static defaultOptions: StaticMapOptions = {
 		width: 512,
 		height: 512,
-		paddingX: 0,
-		paddingY: 0,
+		padding: 0,
 		scaling: true,
 		tileURL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 		tileSize: 256,
@@ -160,6 +170,19 @@ export class StaticMap {
 		return this.options.extent ?? this.calculateExtent();
 	}
 
+	get paddingLeft(): number {
+		return this.options.paddingLeft ?? this.options.paddingX ?? this.options.padding;
+	}
+	get paddingRight(): number {
+		return this.options.paddingRight ?? this.options.paddingX ?? this.options.padding;
+	}
+	get paddingTop(): number {
+		return this.options.paddingTop ?? this.options.paddingY ?? this.options.padding;
+	}
+	get paddingBottom(): number {
+		return this.options.paddingBottom ?? this.options.paddingY ?? this.options.padding;
+	}
+
 	/** A tile cache, if desired */
 	private cache?: TileCache;
 	/** An array of overlays */
@@ -170,7 +193,7 @@ export class StaticMap {
 	 * @param options Options to configure this instance
 	 */
 	constructor(options?: Partial<StaticMapOptions>) {
-		this.options = { ...StaticMap.defaultOptions, ...options };
+		this.options = merge({}, StaticMap.defaultOptions, options);
 		this.cache = this.options.tileCache ? new TileCache(this.options.tileCache) : undefined;
 		this.overlays = [];
 	}
@@ -232,7 +255,7 @@ export class StaticMap {
 		if (points.length >= 2) {
 			return this.addOverlay({
 				points: points,
-				options: { ...StaticMap.defaultLineOptions, ...options }
+				options: merge({}, StaticMap.defaultLineOptions, options)
 			});
 		}
 		return this;
@@ -258,7 +281,7 @@ export class StaticMap {
 	addCircle(center: LatLng, options?: Partial<StaticMapCircleOptions>): StaticMap {
 		return this.addOverlay({
 			center: center,
-			options: { ...StaticMap.defaultCircleOptions, ...options }
+			options: merge({}, StaticMap.defaultCircleOptions, options)
 		});
 	}
 
@@ -273,7 +296,7 @@ export class StaticMap {
 		return this.addOverlay({
 			text: text,
 			anchor: anchor,
-			options: { ...StaticMap.defaultTextOptions, ...options }
+			options: merge({}, StaticMap.defaultTextOptions, options)
 		});
 	}
 
@@ -309,12 +332,18 @@ export class StaticMap {
 
 	/** Transform horizontal tile number to pixel coordinate */
 	private xToPx(x: number, centerX: number, scale: number = 1.0): number {
-		return Math.round((x - centerX) * this.options.tileSize * scale + this.options.width / 2);
+		return Math.round(
+			(x - centerX) * this.options.tileSize * scale
+			+ (this.options.width + this.paddingLeft - this.paddingRight) / 2
+		);
 	}
 
 	/** Transform vertical tile number to pixel coordinate */
 	private yToPy(y: number, centerY: number, scale: number = 1.0): number {
-		return Math.round((y - centerY) * this.options.tileSize * scale + this.options.height / 2);
+		return Math.round(
+			(y - centerY) * this.options.tileSize * scale
+			+ (this.options.height + this.paddingTop - this.paddingBottom) / 2
+		);
 	}
 
 	/** Transform tile numbers to pixel coordinates */
@@ -441,12 +470,12 @@ export class StaticMap {
 			z--;
 			// console.log(`extent=${JSON.stringify(extent, null, 2)}`);
 			const w = (this.lngToX(extent.max.lng, z) - this.lngToX(extent.min.lng, z)) * this.options.tileSize;
-			if (w > (this.options.width - this.options.paddingX * 2)) {
+			if (w > (this.options.width - (this.paddingLeft + this.paddingRight))) {
 				continue;
 			}
 			const h = (this.latToY(extent.min.lat, z) - this.latToY(extent.max.lat, z)) * this.options.tileSize;
 			// console.log(`zoom=${z} -> (w, h)=(${w}, ${h})`);
-			if (h > (this.options.height - this.options.paddingY * 2)) {
+			if (h > (this.options.height - (this.paddingTop + this.paddingBottom))) {
 				continue;
 			}
 			return z;
@@ -494,7 +523,7 @@ export class StaticMap {
 		if (extent === undefined) {
 			throw new Error('Undefined extent');
 		}
-		const { width, height, paddingX, paddingY, scaling, backgroundColor, grayscale, tileSize } = this.options;
+		const { width, height, scaling, backgroundColor, grayscale, tileSize } = this.options;
 		const canvas = Canvas.createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 		// backgound
@@ -508,10 +537,10 @@ export class StaticMap {
 		const centerXY: Point = this.latlngToXY(center, zoom);
 		let scale: number | undefined;
 		if (scaling) {
-			const scaleX = (width - 2 * paddingX) / Math.abs(
+			const scaleX = (width - (this.paddingLeft + this.paddingRight)) / Math.abs(
 				this.lngToPx(extent.max.lng, zoom, centerXY.x) - this.lngToPx(extent.min.lng, zoom, centerXY.x)
 			);
-			const scaleY = (height - 2 * paddingY) / Math.abs(
+			const scaleY = (height - (this.paddingTop + this.paddingBottom)) / Math.abs(
 				this.latToPy(extent.min.lat, zoom, centerXY.y) - this.latToPy(extent.max.lat, zoom, centerXY.y)
 			);
 			scale = Math.min(scaleX, scaleY);

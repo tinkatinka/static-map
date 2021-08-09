@@ -12,7 +12,7 @@ const iso = (id: string): MatchImageSnapshotOptions => ({
 	customDiffDir: path.resolve(__dirname, './diffs'),
 	customSnapshotIdentifier: id,
 	comparisonMethod: 'ssim',
-	failureThreshold: 0.02,
+	failureThreshold: 0.025,
 	failureThresholdType: 'percent'
 });
 
@@ -37,8 +37,7 @@ describe('Test map rendering', () => {
 		const map = new StaticMap({
 			width: 512,
 			height: 512,
-			paddingX: 64,
-			paddingY: 64,
+			padding: 64,
 			tileCache: cachePath,
 			grayscale: true
 		})
@@ -51,7 +50,7 @@ describe('Test map rendering', () => {
 			);
 		const buffer = await map.renderToBuffer();
 		expect(buffer).toMatchImageSnapshot(iso('map_zille'));
-		// writeFileSync('/tmp/map_zille.png', buffer);
+		// fs.writeFileSync('/tmp/map_zille.png', buffer);
 	});
 	it('should render a map with a blue line from Paris to Berlin to Munich and back and a red dot on Hamburg', async () => {
 		const map = new StaticMap({

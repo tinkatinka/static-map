@@ -22,8 +22,13 @@ The constructor can be called with an optional `StaticMapOptions` object, overri
 {
   width: number;            // width of the image in pixels [default: 512]
   height: number;           // height of the image in pixels [default: 512]
-  paddingX: number;         // horizontal padding in pixels [default: 0]
-  paddingY: number;         // vertical padding in pixels [default: 0]
+  padding: number;          // padding in pixels [default: 0]
+  paddingX?: number;        // horizontal padding (overrides `padding`)
+  paddingY?: number;        // vertical padding (overrides `paddings`)
+  paddingLeft?: number;     // left padding (overrides `paddingX`)
+  paddingRight?: number;    // right padding (overrides `paddingX`)
+  paddingTop?: number;      // top padding (overrides `paddingY`)
+  paddingBottom?: number;   // bottom padding (overrides `paddingY`)
   extent?: LatLngBounds;    // extent of the map [default: `undefined`]
   scaling: boolean;         // scale image to match size and padding exactly [default: `true`]
   tileURL: string;          // template string for tile URL [default: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png']
