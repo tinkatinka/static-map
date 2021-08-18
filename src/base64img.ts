@@ -1,4 +1,4 @@
-import { fetch } from './fetch';
+import { fetch } from 'cross-fetch';
 
 
 const base64img = async (url: string, mimetype: string = 'image/png', userAgent: string = 'StaticMap/1.0'): Promise<string> => {

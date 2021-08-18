@@ -1,8 +1,10 @@
-import * as Canvas from 'canvas';
+import Canvas from 'canvas';
 import merge from 'lodash.merge';
 
-import { TileCache, TileData } from './tilecache';
+import { TileCache } from './tilecache';
 import base64img from './base64img';
+
+import type { TileData } from './tilecache';
 
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
