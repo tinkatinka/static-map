@@ -583,13 +583,28 @@ export class StaticMap {
 			switch (type) {
 				case 'image': {
 					const imgdata = overlay as StaticMapImage;
-					const img = await Canvas.loadImage(imgdata.src);
-					const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerXY.x, scale);
-					const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerXY.y, scale);
-					const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerXY.x, scale) - x;
-					const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerXY.y, scale) - y;
-					// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
-					ctx.drawImage(img, x, y, dx, dy);
+					// const img = await Canvas.loadImage(imgdata.src);
+					let img: Canvas.Image | HTMLImageElement;
+					try {
+						img = new Canvas.Image();
+					} catch {
+						img = new Image();
+						img.crossOrigin = 'anonymous';
+					}
+					const draw = async () => new Promise<void>((resolve, reject) => {
+						img.onload = () => {
+							const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerXY.x, scale);
+							const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerXY.y, scale);
+							const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerXY.x, scale) - x;
+							const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerXY.y, scale) - y;
+							// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
+							ctx.drawImage(img, x, y, dx, dy);
+							resolve();
+						};
+						img.onerror = reject;
+						img.src = imgdata.src;
+					});
+					await draw();
 					break;
 				}
 				case 'line': {
