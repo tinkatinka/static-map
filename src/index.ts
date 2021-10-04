@@ -612,6 +612,7 @@ export class StaticMap {
 					if (linedata.points.length > 1) {
 						const p0 = this.latlngToPxPy(linedata.points[0], zoom, centerXY, scale);
 						// console.log(`[line] moving to (${x0}, ${y0})`);
+						ctx.beginPath();
 						ctx.moveTo(p0.x, p0.y);
 						for (const p of linedata.points.slice(1)) {
 							const pxy = this.latlngToPxPy(p, zoom, centerXY, scale);
