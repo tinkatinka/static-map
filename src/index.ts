@@ -164,6 +164,21 @@ export class StaticMap {
 	/** The options provided to this instance */
 	readonly options: StaticMapOptions;
 
+	/** A tile cache, if desired */
+	private cache?: TileCache;
+	/** An array of overlays */
+	private overlays: StaticMapOverlay[];
+
+	/**
+	 * Construct a new StaticMap object with options
+	 * @param options Options to configure this instance
+	 */
+	constructor(options?: Partial<StaticMapOptions>) {
+		this.options = merge({}, StaticMap.defaultOptions, options);
+		this.cache = this.options.tileCache ? new TileCache(this.options.tileCache) : undefined;
+		this.overlays = [];
+	}
+
 	/**
 	 * The extent of this map. Either as specified explicitly in the options ({@link StaticMapOptions}) or computed
 	 * from the image overlays ({@link StaticMapImage})
@@ -183,21 +198,6 @@ export class StaticMap {
 	}
 	get paddingBottom(): number {
 		return this.options.paddingBottom ?? this.options.paddingY ?? this.options.padding;
-	}
-
-	/** A tile cache, if desired */
-	private cache?: TileCache;
-	/** An array of overlays */
-	private overlays: StaticMapOverlay[];
-
-	/**
-	 * Construct a new StaticMap object with options
-	 * @param options Options to configure this instance
-	 */
-	constructor(options?: Partial<StaticMapOptions>) {
-		this.options = merge({}, StaticMap.defaultOptions, options);
-		this.cache = this.options.tileCache ? new TileCache(this.options.tileCache) : undefined;
-		this.overlays = [];
 	}
 
 	/**
@@ -631,7 +631,7 @@ export class StaticMap {
 					const circdata = overlay as StaticMapCircle;
 					const ccenter = this.latlngToPxPy(circdata.center, zoom, centerXY, scale);
 					ctx.beginPath();
-					ctx.arc(ccenter.x, ccenter.y, circdata.options.radius, 0, 2*Math.PI, false);
+					ctx.arc(ccenter.x, ccenter.y, circdata.options.radius, 0, 2 * Math.PI, false);
 					if (circdata.options.fillStyle) {
 						ctx.fillStyle = circdata.options.fillStyle;
 						ctx.fill();
