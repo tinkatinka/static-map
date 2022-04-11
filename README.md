@@ -73,10 +73,10 @@ Options:
 
 ```ts
 interface StaticMapLineOptions {
-  strokeStyle: string;                  // css stroke style [default: 'black']
-  lineWidth: number;                    // line width in pixels [default: 1.0]
-  lineCap: 'butt' | 'round' | 'square'  // [default: 'round']
-  lineJoin: 'bevel' | 'round' | 'miter' // [default: 'round']
+  strokeStyle: string;                   // css stroke style [default: 'black']
+  lineWidth: number;                     // line width in pixels [default: 1.0]
+  lineCap: 'butt' | 'round' | 'square';  // [default: 'round']
+  lineJoin: 'bevel' | 'round' | 'miter'; // [default: 'round']
 }
 ```
 
@@ -121,6 +121,39 @@ interface StaticMapTextOptions {
 #### Images
 ```ts
 .addImage(src: string, bounds: LatLngBounds);
+```
+
+#### Scales
+```ts
+.addScale(options?: PartialDeep<StaticMapScaleOptions>);
+```
+
+Options:
+
+```ts
+export interface StaticMapScaleOptions {
+  units: 'metric' | 'imperial';            // [default: 'metric']
+  position: '(bottom|top)(left|right)';    // [default: 'bottomleft']
+  height: number;                          // in pixels [default: 16]
+  maxWidth: number;                        // percent [default: 20]
+  mx: number;                              // margin x in percent [default: 4]
+  my: number;                              // margin y in percent [default: 4]
+  boxStyle: {                              // drawing style of the box
+    lineWidth: number;                     // line width in pixels [default: 1.0]
+    lineCap: 'butt' | 'round' | 'square';  // [default: 'square']
+    lineJoin: 'bevel' | 'round' | 'miter'; // [default: 'miter']
+    strokeStyle: string;                   // css stroke style [default: 'black']
+    fillStyle: string;                     // css fill style [default: 'rgba(255, 255, 255, 0.3)']
+  };
+  textStyle: {                             // drawing style of the label
+    font: string;                          // [default: '12px sans-serif']
+    lineWidth: number;                     // line width in pixels [default: 1.0]
+    lineCap: 'butt' | 'round' | 'square';  // [default: 'square']
+    lineJoin: 'bevel' | 'round' | 'miter'; // [default: 'miter']
+    strokeStyle: string;                   // css stroke style [default: 'black']
+    fillStyle: string;                     // css fill style [default: 'rgba(255, 255, 255, 0.3)']
+  };
+}
 ```
 
 ### Output

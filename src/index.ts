@@ -1,5 +1,6 @@
 import Canvas from 'canvas';
 import merge from 'lodash.merge';
+import type { SetOptional, PartialDeep } from 'type-fest';
 
 import { TileCache } from './tilecache';
 import base64img from './base64img';
@@ -7,7 +8,7 @@ import base64img from './base64img';
 import type { TileData } from './tilecache';
 
 
-type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+// type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 
 export interface LatLng {
 	lat: number;
@@ -25,55 +26,104 @@ interface Point {
 }
 
 export interface StrokeOptions {
+	/** Stroke style */
 	strokeStyle: string | CanvasGradient | CanvasPattern;
+	/** Line width in pixels */
 	lineWidth: number;
+	/** Line join style */
 	lineJoin: 'bevel' | 'round' | 'miter';
+	/** Line cap style */
 	lineCap: 'butt' | 'round' | 'square';
 }
 
 export interface FillOptions {
+	/** Fill style */
 	fillStyle: string | CanvasGradient | CanvasPattern;
 }
 
-export type StrokeFillOptions = Optional<StrokeOptions, 'strokeStyle'> & Optional<FillOptions, 'fillStyle'>;
+export type StrokeFillOptions = SetOptional<StrokeOptions, 'strokeStyle'> & SetOptional<FillOptions, 'fillStyle'>;
 
-export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapText;
+export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapText | StaticMapScale;
 
-type StaticMapOverlayType = 'image' | 'line' | 'circle' | 'text';
+type StaticMapOverlayType = 'image' | 'line' | 'circle' | 'text' | 'scale';
 
 
 export interface StaticMapImage {
+	/** Src URL */
 	src: string;
+	/** Image bounds */
 	bounds: LatLngBounds;
 }
 
 export interface StaticMapLine {
+	/** Points to be connected */
 	points: LatLng[];
+	/** Options for the line display */
 	options: StaticMapLineOptions;
 }
 
 export type StaticMapLineOptions = StrokeOptions;
 
 export interface StaticMapCircle {
+	/** Center point of the circle */
 	center: LatLng;
+	/** Options for the circle display */
 	options: StaticMapCircleOptions;
 }
 
 export interface StaticMapCircleOptions extends StrokeFillOptions {
+	/** Radius of the circle */
 	radius: number;
 }
 
 export interface StaticMapText {
+	/** Text to be displayed */
 	text: string;
+	/** Anchor point of the text overlay */
 	anchor: LatLng;
+	/** Options for the text display */
 	options: StaticMapTextOptions;
 }
 
 export interface StaticMapTextOptions extends CanvasTextDrawingStyles, StrokeFillOptions {
+	/** Padding x in pixels */
 	px: number;
+	/** Padding y in pixels */
 	py: number;
+	/** Max text width in pixels (optional) */
 	maxWidth?: number;
 }
+
+/** Length units for scale overlay */
+export type LengthUnits = 'metric' | 'imperial';
+/** Layout position of an overlay */
+export type LayoutPosition = 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
+
+export interface StaticMapScale {
+	options: StaticMapScaleOptions;
+}
+
+export interface StaticMapScaleOptions {
+	/** Units to be displayed in the scale */
+	units: LengthUnits;
+	/** Position of the scale (corners) */
+	position: LayoutPosition;
+	/** Height of the scaling overlay in points */
+	height: number;
+	/** Max width of the scaling overlay in percent of the map width */
+	maxWidth: number;
+	/** Horizontal margin in percent of image width */
+	mx: number;
+	/** Vertical margin in percent of image height */
+	my: number;
+	/** Drawing style of the scaling box */
+	boxStyle: StrokeFillOptions;
+	/** Drawing style and font of the scaling label */
+	textStyle: StrokeFillOptions & {
+		font: string;
+	};
+}
+
 
 export interface StaticMapOptions {
 	/** Width of the map image in pixels */
@@ -115,6 +165,13 @@ export interface StaticMapOptions {
 }
 
 
+/** mean earth radius in meters */
+const EARTH_RADIUS_MEAN = 6371008.8 as const;
+
+/** imperial units */
+const FEET_PER_METER = 3.2808399 as const;
+const FEET_PER_MILE = 5280 as const;
+
 /**
  * Generate a static map image
  */
@@ -141,7 +198,7 @@ export class StaticMap {
 	/** Default circle options */
 	private static defaultCircleOptions: StaticMapCircleOptions = {
 		radius: 5.0,
-		strokeStyle: 'rgba(0.5, 0.5, 0.5, 0.5)',
+		strokeStyle: 'rgba(128, 128, 128, 0.5)',
 		lineWidth: 1.0,
 		lineCap: 'round',
 		lineJoin: 'round',
@@ -159,6 +216,29 @@ export class StaticMap {
 		lineCap: 'round',
 		lineJoin: 'round',
 		fillStyle: 'black'
+	};
+	/** Default scale options */
+	private static defaultScaleOptions: StaticMapScaleOptions = {
+		units: 'metric',
+		position: 'bottomleft',
+		mx: 4,
+		my: 4,
+		height: 16,
+		maxWidth: 20,
+		boxStyle: {
+			lineWidth: 1.0,
+			lineCap: 'square',
+			lineJoin: 'miter',
+			strokeStyle: 'black',
+			fillStyle: 'rgba(255, 255, 255, 0.3)'
+		},
+		textStyle: {
+			font: '12px sans-serif',
+			lineWidth: 1.0,
+			lineCap: 'round',
+			lineJoin: 'round',
+			fillStyle: 'black'
+		}
 	};
 
 	/** The options provided to this instance */
@@ -302,6 +382,17 @@ export class StaticMap {
 		});
 	}
 
+	/**
+	 * Add a scale
+	 * @param options Options how to draw the scale (optional)
+	 * @returns `this`
+	 */
+	addScale(options?: PartialDeep<StaticMapScaleOptions>): StaticMap {
+		return this.addOverlay({
+			options: merge({}, StaticMap.defaultScaleOptions, options)
+		});
+	}
+
 
 	/** Calculates the center of provided bounds */
 	private boundsCenter(bounds: LatLngBounds): LatLng {
@@ -384,6 +475,61 @@ export class StaticMap {
 		return Math.atan(Math.sinh(Math.PI * (1 - 2 * y / Math.pow(2, zoom)))) / Math.PI * 180.0;
 	}
 
+	/** Latitude in radians */
+	private latToRad(lat: number): number {
+		return 2.0 * Math.PI * lat / 360.0;
+	}
+
+	/** Longitude in radians */
+	private lngToRad(lng: number): number {
+		return 2.0 * Math.PI * lng / 360.0;
+	}
+
+	/**
+	 * Calculates the central angle between two coordinates (in radians)
+	 * @param from the location from which the angle should be computed
+	 * @param to the location wrt which the angle should be computed
+	 * @returns the central angle in radians
+	 */
+	private ang(from: LatLng, to: LatLng): number {
+		const l1 = this.lngToRad(from.lng);
+		const p1 = this.latToRad(from.lat);
+		const l2 = this.lngToRad(to.lng);
+		const p2 = this.latToRad(to.lat);
+		const dl = Math.abs(l1 - l2);
+		const dp = Math.abs(p1 - p2);
+		const s1 = Math.sin(dp / 2.0);
+		const s2 = Math.sin(dl / 2.0);
+		return 2.0 * Math.asin(Math.sqrt(
+			s1 * s1 + Math.cos(p1) * Math.cos(p2) * s2 * s2
+		));
+	}
+
+	/**
+	 * Calculates the distance (in meters) between two locations.
+	 * **Note**: This uses spherical coordinates and the mean earth radius, so
+	 * it's off by about 0.5%
+	 * @param from the location from which to calculate the distance
+	 * @param to the location to calculate the distance to
+	 * @returns distance in meters
+	 */
+	private distance(from: LatLng, to: LatLng): number {
+		return Math.abs(EARTH_RADIUS_MEAN * this.ang(from, to));
+	}
+
+	/**
+	 * Calculates the rounded distance (in meters) suitable for scale display
+	 * @param value in m
+	 * @returns rounded value in m
+	 */
+	private scaleDistance(value: number): number {
+		const p = Math.pow(10, Math.floor(value).toString().length - 1);
+		let d = value / p;
+		d = (d >= 10) ? 10 : (d >= 5) ? 5 : (d >= 3) ? 3 : (d >= 2) ? 2 : 1;
+		return p * d;
+	}
+
+
 	/** Get the type of an overlay */
 	private overlayType(overlay: StaticMapOverlay): StaticMapOverlayType {
 		if ((overlay as StaticMapImage).bounds !== undefined) {
@@ -392,8 +538,10 @@ export class StaticMap {
 			return 'circle';
 		} else if ((overlay as StaticMapText).anchor !== undefined) {
 			return 'text';
-		} else {
+		} else if ((overlay as StaticMapLine).points !== undefined) {
 			return 'line';
+		} else {
+			return 'scale';
 		}
 	}
 
@@ -577,7 +725,7 @@ export class StaticMap {
 			}
 			ctx.putImageData(imgData, 0, 0);
 		}
-		// image and line overlays
+		// overlays
 		for (const overlay of this.overlays) {
 			const type = this.overlayType(overlay);
 			switch (type) {
@@ -659,6 +807,91 @@ export class StaticMap {
 						ctx.strokeStyle = opts.strokeStyle;
 						ctx.strokeText(textdata.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
 					}
+					break;
+				}
+				case 'scale': {
+					const scaledata = overlay as StaticMapScale;
+					const midLeft: LatLng = { lat: center.lat, lng: extent.min.lng };
+					const midRight: LatLng = { lat: center.lat, lng: extent.max.lng };
+					const mapWidth = this.distance(midLeft, midRight);
+					const maxDist = mapWidth * scaledata.options.maxWidth / 100;
+					let label: string;
+					let ratio: number;
+					if (scaledata.options.units === 'metric') {
+						const scaleLen = this.scaleDistance(maxDist);
+						label = (scaleLen > 1000) ? `${scaleLen / 1000} km` : `${scaleLen} m`;
+						ratio = scaleLen / maxDist;
+					} else {
+						const maxFeet = maxDist * FEET_PER_METER;
+						if (maxFeet > FEET_PER_MILE) {
+							const maxMiles = maxFeet / FEET_PER_MILE;
+							const scaleLen = this.scaleDistance(maxMiles);
+							label = `${scaleLen} mi`;
+							ratio = scaleLen / maxMiles;
+						} else {
+							const scaleLen = this.scaleDistance(maxFeet);
+							label = `${scaleLen} ft`;
+							ratio = scaleLen / maxFeet;
+						}
+					}
+					const dx = width * ratio * scaledata.options.maxWidth / 100;
+					let p0: Point = { x: 0, y: 0 };
+					const mpx = Math.max(scaledata.options.mx * width / 100, scaledata.options.my * height / 100);
+					const margin: Point = { x: mpx, y: mpx };
+					switch (scaledata.options.position) {
+						case 'bottomleft': {
+							p0 = { x: margin.x, y: height - margin.y - scaledata.options.height };
+							break;
+						}
+						case 'bottomright': {
+							p0 = { x: width - dx - margin.x, y: height - margin.y - scaledata.options.height };
+							break;
+						}
+						case 'topleft': {
+							p0 = { x: margin.x, y: margin.y };
+							break;
+						}
+						case 'topright': {
+							p0 = { x: width - dx - margin.x, y: margin.y };
+							break;
+						}
+						default: break;
+					}
+					const p1 = { x: p0.x + dx, y: p0.y + scaledata.options.height };
+					// box
+					const boxStyle = scaledata.options.boxStyle;
+					if (boxStyle.fillStyle !== undefined) {
+						ctx.fillStyle =boxStyle.fillStyle;
+						ctx.fillRect(p0.x, p0.y, Math.abs(p1.x - p0.x), Math.abs(p1.y - p0.y));
+					}
+					if (boxStyle.strokeStyle !== undefined) {
+						ctx.beginPath();
+						ctx.moveTo(p0.x, p0.y);
+						ctx.lineTo(p0.x, p1.y);
+						ctx.lineTo(p1.x, p1.y);
+						ctx.lineTo(p1.x, p0.y);
+						ctx.strokeStyle = boxStyle.strokeStyle;
+						ctx.lineWidth = boxStyle.lineWidth;
+						ctx.lineCap = boxStyle.lineCap;
+						ctx.lineJoin = boxStyle.lineJoin;
+						ctx.stroke();
+					}
+					// text
+					const anchor: Point = { x: 0.5 * (p0.x + p1.x), y: p1.y - 3 };
+					const textStyle = scaledata.options.textStyle;
+					ctx.textAlign = 'center';
+					ctx.textBaseline = 'bottom';
+					ctx.direction = 'ltr';
+					ctx.font = textStyle.font;
+					if (textStyle.fillStyle) {
+						ctx.fillStyle = textStyle.fillStyle;
+						ctx.fillText(label, anchor.x, anchor.y, p1.x - p0.x);
+					}
+					if (textStyle.strokeStyle) {
+						ctx.strokeStyle = textStyle.strokeStyle;
+						ctx.strokeText(label, anchor.x, anchor.y, p1.x - p0.x);
+					}
+
 					break;
 				}
 				default:

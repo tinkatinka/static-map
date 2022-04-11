@@ -115,4 +115,20 @@ describe('Test map rendering', () => {
 		expect(buffer).toMatchImageSnapshot(iso('map_text'));
 		// writeFileSync('/tmp/map_text.png', buffer);
 	});
+	it('should render a map of Berlin with scales', async () => {
+		const map = new StaticMap({
+			extent: {
+				min: { lat: 52.4, lng: 13.3 },
+				max: { lat: 52.6, lng: 13.5 }
+			},
+			grayscale: false,
+			tileCache: cachePath
+		})
+			.addScale()
+			.addScale({ position: 'topleft', boxStyle: { fillStyle: 'rgba(255, 0, 0, 0.3)' } })
+			.addScale({ position: 'topright', boxStyle: { fillStyle: 'rgba(0, 255, 0, 0.3)' } })
+			.addScale({ position: 'bottomright', boxStyle: { fillStyle: 'rgba(0, 0, 255, 0.3)' } });
+		const buffer = await map.renderToBuffer();
+		expect(buffer).toMatchImageSnapshot(iso('map_scale'));
+	});
 });
