@@ -20,7 +20,7 @@ const iso = (id: string): MatchImageSnapshotOptions => ({
 const cachePath = path.resolve(__dirname, '..', '.cache');
 
 
-describe('Test map rendering', () => {
+describe.skip('Test map rendering', () => {
 	it('should render a berlin map', async () => {
 		const map = new StaticMap({
 			extent: {
