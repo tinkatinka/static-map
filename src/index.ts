@@ -2,13 +2,10 @@ import Canvas from 'canvas';
 import merge from 'lodash.merge';
 import type { SetOptional, PartialDeep } from 'type-fest';
 
-import { TileCache } from './tilecache';
+import { TileCache, type TileData } from './tilecache';
 import base64img from './base64img';
+import { compactMap } from './compactmap';
 
-import type { TileData } from './tilecache';
-
-
-// type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 
 export interface LatLng {
 	lat: number;
@@ -550,7 +547,7 @@ export class StaticMap {
 	 * @param overlay The overlay to check
 	 * @returns Maximal enclosing bounds of this overlay
 	 */
-	private overlayExtent(overlay: StaticMapOverlay): LatLngBounds {
+	private overlayExtent(overlay: StaticMapOverlay): LatLngBounds | undefined {
 		const type = this.overlayType(overlay);
 		switch (type) {
 			case 'image':
@@ -577,6 +574,9 @@ export class StaticMap {
 			case 'text': {
 				const a = (overlay as StaticMapText).anchor;
 				return { min: a, max: a };
+			}
+			case 'scale': {
+				return undefined;
 			}
 			default:
 				throw new Error(`Unknown overlay type "${type}"`);
@@ -606,7 +606,7 @@ export class StaticMap {
 				lng: max(arr.map(b => b.max.lng))
 			}
 		});
-		return union(this.overlays.map(this.overlayExtent.bind(this)));
+		return union(compactMap(this.overlays, this.overlayExtent.bind(this)));
 	}
 
 	/**
@@ -834,7 +834,10 @@ export class StaticMap {
 							ratio = scaleLen / maxFeet;
 						}
 					}
-					const dx = width * ratio * scaledata.options.maxWidth / 100;
+					const midLeftP = this.latlngToPxPy(midLeft, zoom, centerXY, scale);
+					const midRightP = this.latlngToPxPy(midRight, zoom, centerXY, scale);
+					const widthP = Math.abs(midRightP.x - midLeftP.x);
+					const dx = widthP * ratio * scaledata.options.maxWidth / 100;
 					let p0: Point = { x: 0, y: 0 };
 					const mpx = Math.max(scaledata.options.mx * width / 100, scaledata.options.my * height / 100);
 					const margin: Point = { x: mpx, y: mpx };
