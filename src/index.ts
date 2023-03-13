@@ -209,6 +209,7 @@ export class StaticMap {
 		textBaseline: 'middle',
 		direction: 'inherit',
 		font: '12px sans-serif',
+		fontKerning: 'auto',
 		lineWidth: 1.0,
 		lineCap: 'round',
 		lineJoin: 'round',
@@ -675,7 +676,7 @@ export class StaticMap {
 		}
 		const { width, height, scaling, backgroundColor, grayscale, tileSize } = this.options;
 		const canvas = Canvas.createCanvas(width, height);
-		const ctx = canvas.getContext('2d');
+		const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D;
 		// backgound
 		if (backgroundColor !== undefined) {
 			ctx.fillStyle = backgroundColor;
@@ -710,7 +711,7 @@ export class StaticMap {
 				const dx = this.xToPx(x + 1, centerXY.x, scale) - p.x;
 				const dy = this.yToPy(y + 1, centerXY.y, scale) - p.y;
 				// console.log(`url='${url}', imgcoord=(${p.x}, ${p.y}, ${dx}, ${dy})`);
-				ctx.drawImage(image, p.x, p.y, dx, dy);
+				ctx.drawImage(image as unknown as CanvasImageSource, p.x, p.y, dx, dy);
 			}
 		}
 		// grayscaling
@@ -746,7 +747,7 @@ export class StaticMap {
 							const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerXY.x, scale) - x;
 							const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerXY.y, scale) - y;
 							// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
-							ctx.drawImage(img, x, y, dx, dy);
+							ctx.drawImage(img as CanvasImageSource, x, y, dx, dy);
 							resolve();
 						};
 						img.onerror = reject;
