@@ -96,6 +96,22 @@ interface StaticMapCircleOptions {
 }
 ```
 
+#### Rectangles
+```ts
+.addRectangle(bounds; LatLngBounds, options?: Parital<StaticMapRectOptions>);
+```
+
+Options:
+
+```ts
+interface StaticMapRectOptions {
+  strokeStyle: string;                   // css stroke style [default: 'black']
+  lineWidth: number;                     // line width in pixels [default: 1.0]
+  lineCap: 'butt' | 'round' | 'square';  // [default: 'round']
+  lineJoin: 'bevel' | 'round' | 'miter'; // [default: 'round']
+}
+```
+
 #### Text
 ```ts
 .addText(text: string, anchor: LatLng, options?: Partial<StaticMapTextOptions>);

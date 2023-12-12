@@ -1,10 +1,10 @@
 import Canvas from 'canvas';
-import merge from 'lodash.merge';
+import { merge } from 'lodash-es';
 import type { SetOptional, PartialDeep } from 'type-fest';
 
-import { TileCache, type TileData } from './tilecache';
-import base64img from './base64img';
-import { compactMap } from './compactmap';
+import { TileCache, type TileData } from './tilecache.js';
+import base64img from './base64img.js';
+import { compactMap } from './compactmap.js';
 
 
 export interface LatLng {
@@ -38,14 +38,21 @@ export interface FillOptions {
 	fillStyle: string | CanvasGradient | CanvasPattern;
 }
 
-export type StrokeFillOptions = SetOptional<StrokeOptions, 'strokeStyle'> & SetOptional<FillOptions, 'fillStyle'>;
+export type StrokeFillOptions =
+	SetOptional<StrokeOptions, 'strokeStyle'> &
+	SetOptional<FillOptions, 'fillStyle'>;
 
-export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapText | StaticMapScale;
+export type StaticMapOverlay = {
+	type: StaticMapOverlayType;
+} &
+StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapRect |
+StaticMapText | StaticMapScale;
 
-type StaticMapOverlayType = 'image' | 'line' | 'circle' | 'text' | 'scale';
-
+type StaticMapOverlayType =
+	'image' | 'line' | 'circle' | 'rect' | 'text' | 'scale';
 
 export interface StaticMapImage {
+	type: 'image';
 	/** Src URL */
 	src: string;
 	/** Image bounds */
@@ -53,6 +60,7 @@ export interface StaticMapImage {
 }
 
 export interface StaticMapLine {
+	type: 'line';
 	/** Points to be connected */
 	points: LatLng[];
 	/** Options for the line display */
@@ -62,6 +70,7 @@ export interface StaticMapLine {
 export type StaticMapLineOptions = StrokeOptions;
 
 export interface StaticMapCircle {
+	type: 'circle';
 	/** Center point of the circle */
 	center: LatLng;
 	/** Options for the circle display */
@@ -73,7 +82,18 @@ export interface StaticMapCircleOptions extends StrokeFillOptions {
 	radius: number;
 }
 
+export type StaticMapRectOptions = StrokeFillOptions;
+
+export interface StaticMapRect {
+	type: 'rect';
+	/** Rectangle bounds */
+	bounds: LatLngBounds;
+	/** Options for rect display */
+	options: StaticMapRectOptions;
+}
+
 export interface StaticMapText {
+	type: 'text';
 	/** Text to be displayed */
 	text: string;
 	/** Anchor point of the text overlay */
@@ -82,7 +102,9 @@ export interface StaticMapText {
 	options: StaticMapTextOptions;
 }
 
-export interface StaticMapTextOptions extends CanvasTextDrawingStyles, StrokeFillOptions {
+export interface StaticMapTextOptions
+	extends CanvasTextDrawingStyles, StrokeFillOptions
+{
 	/** Padding x in pixels */
 	px: number;
 	/** Padding y in pixels */
@@ -94,9 +116,11 @@ export interface StaticMapTextOptions extends CanvasTextDrawingStyles, StrokeFil
 /** Length units for scale overlay */
 export type LengthUnits = 'metric' | 'imperial';
 /** Layout position of an overlay */
-export type LayoutPosition = 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
+export type LayoutPosition =
+	'topleft' | 'topright' | 'bottomleft' | 'bottomright';
 
 export interface StaticMapScale {
+	type: 'scale';
 	options: StaticMapScaleOptions;
 }
 
@@ -195,6 +219,14 @@ export class StaticMap {
 	/** Default circle options */
 	private static defaultCircleOptions: StaticMapCircleOptions = {
 		radius: 5.0,
+		strokeStyle: 'rgba(128, 128, 128, 0.5)',
+		lineWidth: 1.0,
+		lineCap: 'round',
+		lineJoin: 'round',
+		fillStyle: 'rgba(0, 0, 0, 0.5)'
+	};
+	/** Default rect options */
+	private static defaultRectOptions: StaticMapRectOptions = {
 		strokeStyle: 'rgba(128, 128, 128, 0.5)',
 		lineWidth: 1.0,
 		lineCap: 'round',
@@ -322,7 +354,7 @@ export class StaticMap {
 	 * @param bounds The bounds of this image
 	 */
 	addImage(src: string, bounds: LatLngBounds): StaticMap {
-		return this.addOverlay({ src, bounds });
+		return this.addOverlay({ type: 'image', src, bounds });
 	}
 
 	/**
@@ -334,7 +366,8 @@ export class StaticMap {
 	addLines(points: LatLng[], options?: Partial<StaticMapLineOptions>): StaticMap {
 		if (points.length >= 2) {
 			return this.addOverlay({
-				points: points,
+				type: 'line',
+				points,
 				options: merge({}, StaticMap.defaultLineOptions, options)
 			});
 		}
@@ -360,8 +393,23 @@ export class StaticMap {
 	 */
 	addCircle(center: LatLng, options?: Partial<StaticMapCircleOptions>): StaticMap {
 		return this.addOverlay({
-			center: center,
+			type: 'circle',
+			center,
 			options: merge({}, StaticMap.defaultCircleOptions, options)
+		});
+	}
+
+	/**
+	 * Add a rectangle
+	 * @param origin The origin of this rectangle (south-west corner)
+	 * @param size The size of this rectangle (width and height in degrees)
+	 * @returns `this`
+	 */
+	addRectangle(bounds: LatLngBounds, options?: Partial<StaticMapRectOptions>): StaticMap {
+		return this.addOverlay({
+			type: 'rect',
+			bounds,
+			options: merge({}, StaticMap.defaultRectOptions, options)
 		});
 	}
 
@@ -374,8 +422,9 @@ export class StaticMap {
 	 */
 	addText(text: string, anchor: LatLng, options?: Partial<StaticMapTextOptions>): StaticMap {
 		return this.addOverlay({
-			text: text,
-			anchor: anchor,
+			type: 'text',
+			text,
+			anchor,
 			options: merge({}, StaticMap.defaultTextOptions, options)
 		});
 	}
@@ -387,6 +436,7 @@ export class StaticMap {
 	 */
 	addScale(options?: PartialDeep<StaticMapScaleOptions>): StaticMap {
 		return this.addOverlay({
+			type: 'scale',
 			options: merge({}, StaticMap.defaultScaleOptions, options)
 		});
 	}
@@ -527,29 +577,13 @@ export class StaticMap {
 		return p * d;
 	}
 
-
-	/** Get the type of an overlay */
-	private overlayType(overlay: StaticMapOverlay): StaticMapOverlayType {
-		if ((overlay as StaticMapImage).bounds !== undefined) {
-			return 'image';
-		} else if ((overlay as StaticMapCircle).center !== undefined) {
-			return 'circle';
-		} else if ((overlay as StaticMapText).anchor !== undefined) {
-			return 'text';
-		} else if ((overlay as StaticMapLine).points !== undefined) {
-			return 'line';
-		} else {
-			return 'scale';
-		}
-	}
-
 	/**
 	 * Calculate extent of a single overlay
 	 * @param overlay The overlay to check
 	 * @returns Maximal enclosing bounds of this overlay
 	 */
 	private overlayExtent(overlay: StaticMapOverlay): LatLngBounds | undefined {
-		const type = this.overlayType(overlay);
+		const type = overlay.type;
 		switch (type) {
 			case 'image':
 				return (overlay as StaticMapImage).bounds;
@@ -557,6 +591,8 @@ export class StaticMap {
 				const c = (overlay as StaticMapCircle).center;
 				return { min: c, max: c };
 			}
+			case 'rect':
+				return (overlay as StaticMapRect).bounds;
 			case 'line': {
 				const min = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr < prev) ? curr : prev));
 				const max = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr > prev) ? curr : prev));
@@ -728,10 +764,9 @@ export class StaticMap {
 		}
 		// overlays
 		for (const overlay of this.overlays) {
-			const type = this.overlayType(overlay);
+			const type = overlay.type;
 			switch (type) {
 				case 'image': {
-					const imgdata = overlay as StaticMapImage;
 					// const img = await Canvas.loadImage(imgdata.src);
 					let img: Canvas.Image | HTMLImageElement;
 					try {
@@ -742,83 +777,97 @@ export class StaticMap {
 					}
 					const draw = async () => new Promise<void>((resolve, reject) => {
 						img.onload = () => {
-							const x = this.lngToPx(imgdata.bounds.min.lng, zoom, centerXY.x, scale);
-							const y = this.latToPy(imgdata.bounds.max.lat, zoom, centerXY.y, scale);
-							const dx = this.lngToPx(imgdata.bounds.max.lng, zoom, centerXY.x, scale) - x;
-							const dy = this.latToPy(imgdata.bounds.min.lat, zoom, centerXY.y, scale) - y;
+							const x = this.lngToPx(overlay.bounds.min.lng, zoom, centerXY.x, scale);
+							const y = this.latToPy(overlay.bounds.max.lat, zoom, centerXY.y, scale);
+							const dx = this.lngToPx(overlay.bounds.max.lng, zoom, centerXY.x, scale) - x;
+							const dy = this.latToPy(overlay.bounds.min.lat, zoom, centerXY.y, scale) - y;
 							// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
 							ctx.drawImage(img as CanvasImageSource, x, y, dx, dy);
 							resolve();
 						};
 						img.onerror = reject;
-						img.src = imgdata.src;
+						img.src = overlay.src;
 					});
 					await draw();
 					break;
 				}
 				case 'line': {
-					const linedata = overlay as StaticMapLine;
-					if (linedata.points.length > 1) {
-						const p0 = this.latlngToPxPy(linedata.points[0], zoom, centerXY, scale);
+					if (overlay.points.length > 1) {
+						const p0 = this.latlngToPxPy(overlay.points[0], zoom, centerXY, scale);
 						// console.log(`[line] moving to (${x0}, ${y0})`);
 						ctx.beginPath();
 						ctx.moveTo(p0.x, p0.y);
-						for (const p of linedata.points.slice(1)) {
+						for (const p of overlay.points.slice(1)) {
 							const pxy = this.latlngToPxPy(p, zoom, centerXY, scale);
 							// console.log(`[line] drawing to (${px}, ${py})`);
 							ctx.lineTo(pxy.x, pxy.y);
 						}
-						ctx.strokeStyle = linedata.options.strokeStyle;
-						ctx.lineWidth = linedata.options.lineWidth;
-						ctx.lineCap = linedata.options.lineCap;
-						ctx.lineJoin = linedata.options.lineJoin;
+						ctx.strokeStyle = overlay.options.strokeStyle;
+						ctx.lineWidth = overlay.options.lineWidth;
+						ctx.lineCap = overlay.options.lineCap;
+						ctx.lineJoin = overlay.options.lineJoin;
 						ctx.stroke();
 					}
 					break;
 				}
 				case 'circle': {
-					const circdata = overlay as StaticMapCircle;
-					const ccenter = this.latlngToPxPy(circdata.center, zoom, centerXY, scale);
+					const ccenter = this.latlngToPxPy(overlay.center, zoom, centerXY, scale);
 					ctx.beginPath();
-					ctx.arc(ccenter.x, ccenter.y, circdata.options.radius, 0, 2 * Math.PI, false);
-					if (circdata.options.fillStyle) {
-						ctx.fillStyle = circdata.options.fillStyle;
+					ctx.arc(ccenter.x, ccenter.y, overlay.options.radius, 0, 2 * Math.PI, false);
+					if (overlay.options.fillStyle) {
+						ctx.fillStyle = overlay.options.fillStyle;
 						ctx.fill();
 					}
-					if (circdata.options.strokeStyle && circdata.options.lineWidth > 0) {
-						ctx.strokeStyle = circdata.options.strokeStyle;
-						ctx.lineWidth = circdata.options.lineWidth;
+					if (overlay.options.strokeStyle && overlay.options.lineWidth > 0) {
+						ctx.strokeStyle = overlay.options.strokeStyle;
+						ctx.lineWidth = overlay.options.lineWidth;
+						ctx.stroke();
+					}
+					break;
+				}
+				case 'rect': {
+					ctx.beginPath();
+					const min = this.latlngToPxPy(overlay.bounds.min, zoom, centerXY, scale);
+					const max = this.latlngToPxPy(overlay.bounds.max, zoom, centerXY, scale);
+					ctx.rect(min.x, min.y, max.x - min.x, max.y - min.y);
+					if (overlay.options.fillStyle) {
+						ctx.fillStyle = overlay.options.fillStyle;
+						ctx.fill();
+					}
+					if (overlay.options.strokeStyle && overlay.options.lineWidth > 0) {
+						ctx.strokeStyle = overlay.options.strokeStyle;
+						ctx.lineWidth = overlay.options.lineWidth;
+						ctx.lineJoin = overlay.options.lineJoin;
+						ctx.lineCap = overlay.options.lineCap;
 						ctx.stroke();
 					}
 					break;
 				}
 				case 'text': {
-					const textdata = overlay as StaticMapText;
-					const anchor = this.latlngToPxPy(textdata.anchor, zoom, centerXY, scale);
-					const opts = textdata.options;
+					const anchor = this.latlngToPxPy(overlay.anchor, zoom, centerXY, scale);
+					const opts = overlay.options;
 					ctx.textAlign = opts.textAlign;
 					ctx.textBaseline = opts.textBaseline;
 					ctx.direction = opts.direction;
 					ctx.font = opts.font;
 					if (opts.fillStyle) {
 						ctx.fillStyle = opts.fillStyle;
-						ctx.fillText(textdata.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
+						ctx.fillText(overlay.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
 					}
 					if (opts.strokeStyle) {
 						ctx.strokeStyle = opts.strokeStyle;
-						ctx.strokeText(textdata.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
+						ctx.strokeText(overlay.text, anchor.x + opts.px, anchor.y + opts.py, opts.maxWidth);
 					}
 					break;
 				}
 				case 'scale': {
-					const scaledata = overlay as StaticMapScale;
 					const midLeft: LatLng = { lat: center.lat, lng: extent.min.lng };
 					const midRight: LatLng = { lat: center.lat, lng: extent.max.lng };
 					const mapWidth = this.distance(midLeft, midRight);
-					const maxDist = mapWidth * scaledata.options.maxWidth / 100;
+					const maxDist = mapWidth * overlay.options.maxWidth / 100;
 					let label: string;
 					let ratio: number;
-					if (scaledata.options.units === 'metric') {
+					if (overlay.options.units === 'metric') {
 						const scaleLen = this.scaleDistance(maxDist);
 						label = (scaleLen > 1000) ? `${scaleLen / 1000} km` : `${scaleLen} m`;
 						ratio = scaleLen / maxDist;
@@ -838,17 +887,17 @@ export class StaticMap {
 					const midLeftP = this.latlngToPxPy(midLeft, zoom, centerXY, scale);
 					const midRightP = this.latlngToPxPy(midRight, zoom, centerXY, scale);
 					const widthP = Math.abs(midRightP.x - midLeftP.x);
-					const dx = widthP * ratio * scaledata.options.maxWidth / 100;
+					const dx = widthP * ratio * overlay.options.maxWidth / 100;
 					let p0: Point = { x: 0, y: 0 };
-					const mpx = Math.max(scaledata.options.mx * width / 100, scaledata.options.my * height / 100);
+					const mpx = Math.max(overlay.options.mx * width / 100, overlay.options.my * height / 100);
 					const margin: Point = { x: mpx, y: mpx };
-					switch (scaledata.options.position) {
+					switch (overlay.options.position) {
 						case 'bottomleft': {
-							p0 = { x: margin.x, y: height - margin.y - scaledata.options.height };
+							p0 = { x: margin.x, y: height - margin.y - overlay.options.height };
 							break;
 						}
 						case 'bottomright': {
-							p0 = { x: width - dx - margin.x, y: height - margin.y - scaledata.options.height };
+							p0 = { x: width - dx - margin.x, y: height - margin.y - overlay.options.height };
 							break;
 						}
 						case 'topleft': {
@@ -861,9 +910,9 @@ export class StaticMap {
 						}
 						default: break;
 					}
-					const p1 = { x: p0.x + dx, y: p0.y + scaledata.options.height };
+					const p1 = { x: p0.x + dx, y: p0.y + overlay.options.height };
 					// box
-					const boxStyle = scaledata.options.boxStyle;
+					const boxStyle = overlay.options.boxStyle;
 					if (boxStyle.fillStyle !== undefined) {
 						ctx.fillStyle =boxStyle.fillStyle;
 						ctx.fillRect(p0.x, p0.y, Math.abs(p1.x - p0.x), Math.abs(p1.y - p0.y));
@@ -882,7 +931,7 @@ export class StaticMap {
 					}
 					// text
 					const anchor: Point = { x: 0.5 * (p0.x + p1.x), y: p1.y - 3 };
-					const textStyle = scaledata.options.textStyle;
+					const textStyle = overlay.options.textStyle;
 					ctx.textAlign = 'center';
 					ctx.textBaseline = 'bottom';
 					ctx.direction = 'ltr';
