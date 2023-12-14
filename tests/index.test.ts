@@ -47,7 +47,8 @@ describe('Test map rendering', () => {
 	});
 	it(
 		'should render a map with a blue line from Paris to Berlin to Munich ' +
-		'and back and a red dot on Hamburg and a rectangle on Cologne',
+		'and back and a red dot on Hamburg, a rectangle on Cologne and a' +
+		'polygon around Berlin',
 		async () => {
 			const map = new StaticMap({
 				paddingX: 32,
@@ -73,7 +74,16 @@ describe('Test map rendering', () => {
 				}, {
 					strokeStyle: 'yellow',
 					fillStyle: 'rgba(255,255,0,0.3)'
-				});
+				})
+				.addPolygon([
+					{ lat: 52.2, lng: 13.4 },
+					{ lat: 52.5, lng: 13.1 },
+					{ lat: 52.8, lng: 13.4 },
+					{ lat: 52.5, lng: 13.7 }
+				], {
+					strokeStyle: 'black',
+					fillStyle: 'rgba(255,0,255,0.3)'
+				})
 			const buffer = await map.renderToBuffer();
 			assert(buffer.length > 0);
 			fs.writeFileSync('/tmp/map_line.png', buffer);

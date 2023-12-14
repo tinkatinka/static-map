@@ -46,10 +46,10 @@ export type StaticMapOverlay = {
 	type: StaticMapOverlayType;
 } &
 StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapRect |
-StaticMapText | StaticMapScale;
+StaticMapPolygon | StaticMapText | StaticMapScale;
 
 type StaticMapOverlayType =
-	'image' | 'line' | 'circle' | 'rect' | 'text' | 'scale';
+	'image' | 'line' | 'circle' | 'rect' | 'polygon' | 'text' | 'scale';
 
 export interface StaticMapImage {
 	type: 'image';
@@ -90,6 +90,16 @@ export interface StaticMapRect {
 	bounds: LatLngBounds;
 	/** Options for rect display */
 	options: StaticMapRectOptions;
+}
+
+export type StaticMapPolygonOptions = StrokeFillOptions;
+
+export interface StaticMapPolygon {
+	type: 'polygon';
+	/** Polygon points */
+	points: LatLng[];
+	/** Options for polygon display */
+	options: StaticMapPolygonOptions;
 }
 
 export interface StaticMapText {
@@ -414,6 +424,23 @@ export class StaticMap {
 	}
 
 	/**
+	 * Add a polygon
+	 * @param points The polygon points
+	 * @param options The drawing style of the polygon (optional)
+	 * @returns `this`
+	 */
+	addPolygon(points: LatLng[], options?: Partial<StaticMapPolygonOptions>): StaticMap {
+		if (points.length >= 2) {
+			return this.addOverlay({
+				type: 'polygon',
+				points,
+				options: merge({}, StaticMap.defaultLineOptions, options)
+			});
+		}
+		return this;
+	}
+
+	/**
 	 * Add some text
 	 * @param text The text to add
 	 * @param anchor The anchor point for the text
@@ -593,7 +620,8 @@ export class StaticMap {
 			}
 			case 'rect':
 				return (overlay as StaticMapRect).bounds;
-			case 'line': {
+			case 'line':
+			case 'polygon': {
 				const min = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr < prev) ? curr : prev));
 				const max = (arr: Array<number>): number => arr.reduce((prev, curr) => ((curr > prev) ? curr : prev));
 				const bounds = (points: Array<LatLng>): LatLngBounds => ({
@@ -807,6 +835,32 @@ export class StaticMap {
 						ctx.lineCap = overlay.options.lineCap;
 						ctx.lineJoin = overlay.options.lineJoin;
 						ctx.stroke();
+					}
+					break;
+				}
+				case 'polygon': {
+					if (overlay.points.length > 1) {
+						const p0 = this.latlngToPxPy(overlay.points[0], zoom, centerXY, scale);
+						// console.log(`[line] moving to (${x0}, ${y0})`);
+						ctx.beginPath();
+						ctx.moveTo(p0.x, p0.y);
+						for (const p of overlay.points.slice(1)) {
+							const pxy = this.latlngToPxPy(p, zoom, centerXY, scale);
+							// console.log(`[line] drawing to (${px}, ${py})`);
+							ctx.lineTo(pxy.x, pxy.y);
+						}
+						ctx.closePath()
+						if (overlay.options.fillStyle) {
+							ctx.fillStyle = overlay.options.fillStyle;
+							ctx.fill();
+						}
+						if (overlay.options.strokeStyle && overlay.options.lineWidth > 0) {
+							ctx.strokeStyle = overlay.options.strokeStyle;
+							ctx.lineWidth = overlay.options.lineWidth;
+							ctx.lineCap = overlay.options.lineCap;
+							ctx.lineJoin = overlay.options.lineJoin;
+							ctx.stroke();
+						}
 					}
 					break;
 				}
