@@ -8,7 +8,6 @@ import { StaticMap } from '../src/index.js';
 
 
 // path to tile cache
-// eslint-disable-next-line @typescript-eslint/naming-convention, no-underscore-dangle
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const cachePath = path.resolve(__dirname, '..', '.cache');
 

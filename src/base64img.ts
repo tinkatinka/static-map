@@ -1,10 +1,12 @@
 import { fetch } from 'cross-fetch';
 
 
-const base64img = async (url: string, mimetype: string = 'image/png', userAgent: string = 'StaticMap/1.0'): Promise<string> => {
+const base64img = async (
+	url: string, mimetype: string = 'image/png',
+	userAgent: string = 'StaticMap/2'
+): Promise<string> => {
 	const response = await fetch(url, {
 		headers: {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			'User-Agent': userAgent
 		}
 	});

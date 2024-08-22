@@ -26,7 +26,7 @@
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist/*",
-		"lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+		"lint": "eslint",
 		"test": "tsc -p tsconfig.test.json && node --experimental-vm-modules --no-warnings --test --test-reporter=spec build/tests/"
 	},
 	"browser": {
@@ -38,13 +38,14 @@
 		"lodash-es": "^4.17.21"
 	},
 	"devDependencies": {
+		"@eslint/js": "^9.9.0",
+		"@types/eslint__js": "^8.42.3",
 		"@types/lodash-es": "^4.17.12",
-		"@types/node": "^20.8.9",
-		"@typescript-eslint/eslint-plugin": "^6.9.0",
-		"eslint": "^8.0.1",
-		"eslint-plugin-import": "^2.23.4",
+		"@types/node": "^22.5.0",
+		"eslint": "^9.9.0",
 		"type-fest": "^4.6.0",
-		"typescript": "^5.2.2"
+		"typescript": "^5.5.4",
+		"typescript-eslint": "^8.2.0"
 	},
 	"peerDependencies": {
 		"canvas": "^2.8.0"

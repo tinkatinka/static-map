@@ -112,8 +112,9 @@ export interface StaticMapText {
 	options: StaticMapTextOptions;
 }
 
-export interface StaticMapTextOptions
-	extends CanvasTextDrawingStyles, StrokeFillOptions
+export interface StaticMapTextOptions extends
+	SetOptional<CanvasTextDrawingStyles, 'letterSpacing' | 'wordSpacing'>,
+	StrokeFillOptions
 {
 	/** Padding x in pixels */
 	px: number;
@@ -252,10 +253,13 @@ export class StaticMap {
 		direction: 'inherit',
 		font: '12px sans-serif',
 		fontKerning: 'auto',
+		fontStretch: 'normal',
+		fontVariantCaps: 'normal',
 		lineWidth: 1.0,
 		lineCap: 'round',
 		lineJoin: 'round',
-		fillStyle: 'black'
+		fillStyle: 'black',
+		textRendering: 'auto'
 	};
 	/** Default scale options */
 	private static defaultScaleOptions: StaticMapScaleOptions = {
