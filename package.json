@@ -1,6 +1,6 @@
 {
 	"name": "@tinkatinka/static-map",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"description": "Render static map images",
 	"author": "Florian Gmeiner <florian@tinkatinka.com>",
 	"license": "MIT",
@@ -27,7 +27,7 @@
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist/*",
 		"lint": "eslint",
-		"test": "tsc -p tsconfig.test.json && node --experimental-vm-modules --no-warnings --test --test-reporter=spec build/tests/"
+		"test": "tsc -p tsconfig.test.json && node --experimental-vm-modules --no-warnings --test --test-reporter=spec"
 	},
 	"browser": {
 		"node-fetch": false
