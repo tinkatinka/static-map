@@ -30,7 +30,7 @@
 		"build": "tsc -p tsconfig.build.json",
 		"clean": "rm -rf dist/*",
 		"lint": "eslint",
-		"test": "tsc -p tsconfig.test.json && node --experimental-vm-modules --no-experimental-strip-types --no-warnings --test --test-reporter=spec"
+		"test": "tsc -p tsconfig.test.json && node --experimental-vm-modules --no-warnings --test --test-reporter=spec build/tests/index.test.js"
 	},
 	"browser": {
 		"node-fetch": false
