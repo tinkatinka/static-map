@@ -67,7 +67,7 @@ jobs:
         ls -la tests/diffs
 
     - name: Archive test artifacts
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       if: ${{ failure() }}
       with:
         name: snapshot-diffs
