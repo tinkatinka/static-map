@@ -2,9 +2,9 @@ import Canvas from 'canvas';
 import { merge } from 'lodash-es';
 import type { SetOptional, PartialDeep } from 'type-fest';
 
-import { TileCache, type TileData } from './tilecache.js';
-import base64img from './base64img.js';
+import { base64img } from './base64img.js';
 import { compactMap } from './compactmap.js';
+import { TileCache, type TileData } from './tilecache.js';
 
 
 export interface LatLng {
@@ -190,6 +190,8 @@ export interface StaticMapOptions {
 	tileCache?: string;
 	/** User agent string to transmit when loading tiles */
 	userAgent?: string;
+	/** Tile loading timeout [ms] */
+	tileTimeout: number;
 	/** Background color in CSS notation (only relevant for transparent tiles) */
 	backgroundColor?: string;
 	/** Grayscale filter for map tiles (not image overlays(!)) */
@@ -218,6 +220,7 @@ export class StaticMap {
 		tileURL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 		tileSize: 256,
 		tileMaxZoom: 20,
+		tileTimeout: 2000,
 		grayscale: false
 	};
 	/** Default line options */
@@ -338,7 +341,7 @@ export class StaticMap {
 	 */
 	async renderToDataURL(): Promise<string> {
 		const canvas = await this.createCanvas();
-		// FIXME: Use version w/ callbacks here but couldn't get those to work
+		// FIXME: Use version w/ callbacks here
 		return canvas.toDataURL('image/png');
 	}
 
@@ -348,7 +351,7 @@ export class StaticMap {
 	 */
 	async renderToBuffer(): Promise<Buffer> {
 		const canvas = await this.createCanvas();
-		// FIXME: Use version w/ callbacks here but couldn't get those to work
+		// FIXME: Use version w/ callbacks here
 		return canvas.toBuffer('image/png');
 	}
 
@@ -687,13 +690,11 @@ export class StaticMap {
 		let z = this.options.tileMaxZoom + 1;
 		while (z > 0) {
 			z--;
-			// console.log(`extent=${JSON.stringify(extent, null, 2)}`);
 			const w = (this.lngToX(extent.max.lng, z) - this.lngToX(extent.min.lng, z)) * this.options.tileSize;
 			if (w > (this.options.width - (this.paddingLeft + this.paddingRight))) {
 				continue;
 			}
 			const h = (this.latToY(extent.min.lat, z) - this.latToY(extent.max.lat, z)) * this.options.tileSize;
-			// console.log(`zoom=${z} -> (w, h)=(${w}, ${h})`);
 			if (h > (this.options.height - (this.paddingTop + this.paddingBottom))) {
 				continue;
 			}
@@ -718,7 +719,10 @@ export class StaticMap {
 		if (this.cache !== undefined) {
 			const td: TileData = { z: zoom, x: tileX, y: tileY };
 			try {
-				const csrc = await this.cache.pass(td, () => base64img(src, 'image/png', this.options.userAgent));
+				const csrc = await this.cache.pass(
+					td,
+					() => base64img(src, this.options.userAgent, this.options.tileTimeout)
+				);
 				if (csrc !== undefined) {
 					src = csrc;
 				}
@@ -727,7 +731,7 @@ export class StaticMap {
 				throw error;
 			}
 		} else {
-			src = await base64img(src, 'image/png', this.options.userAgent);
+			src = await base64img(src, this.options.userAgent, this.options.tileTimeout);
 		}
 		const image = await Canvas.loadImage(src);
 		return image;
@@ -764,7 +768,6 @@ export class StaticMap {
 			);
 			scale = Math.min(scaleX, scaleY);
 		}
-		// console.log(`scale=(${scaleX}, ${scaleY}) => ${scale}`);
 		const minX = Math.floor(centerXY.x - 0.5 * width / tileSize);
 		const maxX = Math.ceil(centerXY.x + 0.5 * width / tileSize);
 		const minY = Math.floor(centerXY.y - 0.5 * height / tileSize);
@@ -778,7 +781,6 @@ export class StaticMap {
 				const p = this.xyToPxPy({ x, y }, centerXY, scale);
 				const dx = this.xToPx(x + 1, centerXY.x, scale) - p.x;
 				const dy = this.yToPy(y + 1, centerXY.y, scale) - p.y;
-				// console.log(`url='${url}', imgcoord=(${p.x}, ${p.y}, ${dx}, ${dy})`);
 				ctx.drawImage(image as unknown as CanvasImageSource, p.x, p.y, dx, dy);
 			}
 		}
@@ -799,7 +801,6 @@ export class StaticMap {
 			const type = overlay.type;
 			switch (type) {
 				case 'image': {
-					// const img = await Canvas.loadImage(imgdata.src);
 					let img: Canvas.Image | HTMLImageElement;
 					try {
 						img = new Canvas.Image();
@@ -813,7 +814,6 @@ export class StaticMap {
 							const y = this.latToPy(overlay.bounds.max.lat, zoom, centerXY.y, scale);
 							const dx = this.lngToPx(overlay.bounds.max.lng, zoom, centerXY.x, scale) - x;
 							const dy = this.latToPy(overlay.bounds.min.lat, zoom, centerXY.y, scale) - y;
-							// console.log(`Image (x, y, dx, dy) = (${x}, ${y}, ${dx}, ${dy})`);
 							ctx.drawImage(img as CanvasImageSource, x, y, dx, dy);
 							resolve();
 						};
@@ -826,12 +826,10 @@ export class StaticMap {
 				case 'line': {
 					if (overlay.points.length > 1) {
 						const p0 = this.latlngToPxPy(overlay.points[0], zoom, centerXY, scale);
-						// console.log(`[line] moving to (${x0}, ${y0})`);
 						ctx.beginPath();
 						ctx.moveTo(p0.x, p0.y);
 						for (const p of overlay.points.slice(1)) {
 							const pxy = this.latlngToPxPy(p, zoom, centerXY, scale);
-							// console.log(`[line] drawing to (${px}, ${py})`);
 							ctx.lineTo(pxy.x, pxy.y);
 						}
 						ctx.strokeStyle = overlay.options.strokeStyle;
@@ -845,15 +843,13 @@ export class StaticMap {
 				case 'polygon': {
 					if (overlay.points.length > 1) {
 						const p0 = this.latlngToPxPy(overlay.points[0], zoom, centerXY, scale);
-						// console.log(`[line] moving to (${x0}, ${y0})`);
 						ctx.beginPath();
 						ctx.moveTo(p0.x, p0.y);
 						for (const p of overlay.points.slice(1)) {
 							const pxy = this.latlngToPxPy(p, zoom, centerXY, scale);
-							// console.log(`[line] drawing to (${px}, ${py})`);
 							ctx.lineTo(pxy.x, pxy.y);
 						}
-						ctx.closePath()
+						ctx.closePath();
 						if (overlay.options.fillStyle) {
 							ctx.fillStyle = overlay.options.fillStyle;
 							ctx.fill();

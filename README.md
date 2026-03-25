@@ -35,6 +35,7 @@ The constructor can be called with an optional `StaticMapOptions` object, overri
   tileSize: number;         // size of tiles [default: 256]
   tileMaxZoom: number;      // maximum zoom available for tiles [default: 20]
   tileCache?: string;       // path to a cache directory for tiles [default: `undefined`]
+  tileTimeout?: number;     // tile fetching timeout [ms] [default: 2000]
   backgroundColor?: string; // image background color (CSS string) [default: `undefined`]
   grayscale: boolean;       // apply a grayscale filter to map tiles (not overlays) [default: `false`]
 }

@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFile, writeFile } from 'fs';
+import { mkdirSync } from 'fs';
+import { readFile, writeFile } from 'fs/promises';
 import { join as pathJoin } from 'path';
-import { promisify } from 'util';
 
 
 /**
@@ -14,7 +14,7 @@ export interface TileData {
 
 
 /**
- * A tile cache
+ * A fs-based tile cache
  */
 export class TileCache {
 
@@ -54,8 +54,12 @@ export class TileCache {
 	 */
 	async read(data: TileData): Promise<string | undefined> {
 		const p = this.tilePath(data);
-		const r = existsSync(p) ? await promisify(readFile)(p, { encoding: 'utf-8' }) : undefined;
-		return r;
+		try {
+			const r = await readFile(p, { encoding: 'utf-8' });
+			return r;
+		} catch {
+			return undefined;
+		}
 	}
 
 	/**
@@ -65,7 +69,7 @@ export class TileCache {
 	 */
 	async write(data: TileData, src: string): Promise<void> {
 		const p = this.tilePath(data);
-		await promisify(writeFile)(p, src, { encoding: 'utf-8' });
+		await writeFile(p, src, { encoding: 'utf-8' });
 	}
 
 	/**

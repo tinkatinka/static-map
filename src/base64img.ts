@@ -1,19 +1,42 @@
-const base64img = async (
-	url: string, mimetype: string = 'image/png',
-	userAgent: string = 'StaticMap/2'
-): Promise<string> => {
-	const response = await fetch(url, {
-		headers: {
-			'User-Agent': userAgent
-		}
-	});
-	if (response.status !== 200) {
-		throw new Error(`Server status ${response.status} for request '${url}'`);
+export function mimeFromURL(url: string) {
+	const str = url.toLowerCase();
+	if (/png$/.test(str)) {
+		return 'image/png';
+	} else if (/(jpg)|(jpeg)$/.test(str)) {
+		return 'image/jpeg';
+	} else if (/svg$/.test(str)) {
+		return 'image/svg+xml';
+	} else {
+		return 'application/octet-stream';
 	}
-	const buf: ArrayBuffer = await response.arrayBuffer();
-	const imgstr = Buffer.from(buf).toString('base64');
-	const dataurl = 'data:' + mimetype.trim() + ';base64,' + imgstr;
-	return dataurl;
-};
+}
 
-export default base64img;
+export async function base64img(
+	url: string,
+	userAgent: string = 'StaticMap/3',
+	timeout: number = 0
+): Promise<string> {
+	let timeoutId: NodeJS.Timeout | undefined;
+	try {
+		const controller = new AbortController();
+		if (timeout > 1) {
+			timeoutId = setTimeout(() => controller.abort(), timeout);
+		}
+		const response = await fetch(url, {
+			headers: {
+				'User-Agent': userAgent
+			},
+			signal: controller.signal
+		});
+		if (!response.ok) {
+			throw new Error(`Server status ${response.status} for request '${url}'`);
+		}
+		const buf: ArrayBuffer = await response.arrayBuffer();
+		const imgstr = Buffer.from(buf).toString('base64');
+		const mimetype = response.headers.get('Content-Type')?.toLowerCase() ?? mimeFromURL(url);
+		const dataurl = 'data:' + mimetype.trim() + ';base64,' + imgstr;
+		return dataurl;
+	} finally {
+		clearTimeout(timeoutId);
+	}
+};

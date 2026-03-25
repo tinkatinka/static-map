@@ -1,4 +1,6 @@
-const isDefined = <T>(value: T | undefined): value is T => (value !== undefined);
+const isDefined = <T>(value: T | null | undefined): value is T => (
+	value !== undefined && value !== null
+);
 
 /**
  * Map an array, ignoring `undefined`/`null` values

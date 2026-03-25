@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as url from 'url';
 
 import { StaticMap } from '../src/index.js';
+import { mimeFromURL } from '../src/base64img.js';
 
 
 // path to tile cache
@@ -13,6 +14,13 @@ const cachePath = path.resolve(__dirname, '..', '.cache');
 
 
 describe('Test map rendering', () => {
+	it('should infer mime type correctly', () => {
+		assert(mimeFromURL('foo.png') === 'image/png');
+		assert(mimeFromURL('foo.jpg') === 'image/jpeg');
+		assert(mimeFromURL('foo.jpeg') === 'image/jpeg');
+		assert(mimeFromURL('foo.svg') === 'image/svg+xml');
+		assert(mimeFromURL('foo.bar') === 'application/octet-stream');
+	});
 	it('should render a berlin map', async () => {
 		const map = new StaticMap({
 			extent: {
@@ -31,6 +39,7 @@ describe('Test map rendering', () => {
 			height: 512,
 			padding: 64,
 			tileCache: cachePath,
+			tileTimeout: 5000,
 			grayscale: true
 		})
 			.addImage(
@@ -82,7 +91,7 @@ describe('Test map rendering', () => {
 				], {
 					strokeStyle: 'black',
 					fillStyle: 'rgba(255,0,255,0.3)'
-				})
+				});
 			const buffer = await map.renderToBuffer();
 			assert(buffer.length > 0);
 			fs.writeFileSync('/tmp/map_line.png', buffer);

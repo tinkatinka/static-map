@@ -1,6 +1,6 @@
 {
 	"name": "@tinkatinka/static-map",
-	"version": "3.0.3",
+	"version": "3.0.4",
 	"description": "Render static map images",
 	"author": "Florian Gmeiner <florian@tinkatinka.com>",
 	"license": "MIT",
@@ -8,7 +8,7 @@
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"files": [
 		"dist"
@@ -32,21 +32,18 @@
 		"lint": "eslint",
 		"test": "tsc -p tsconfig.test.json && node --experimental-vm-modules --no-warnings --test --test-reporter=spec build/tests/index.test.js"
 	},
-	"browser": {
-		"node-fetch": false
-	},
 	"dependencies": {
 		"canvas": "^3.1.0",
 		"lodash-es": "^4.17.21"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@types/eslint__js": "^8.42.3",
+		"@stylistic/eslint-plugin": "^5.10.0",
 		"@types/lodash-es": "^4.17.12",
-		"@types/node": "^24.5.2",
+		"@types/node": "^25.5.0",
 		"eslint": "^10.0.2",
 		"type-fest": "^5.0.1",
-		"typescript": "^5.5.4",
+		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.2.0"
 	}
 }
