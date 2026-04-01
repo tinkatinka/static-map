@@ -1,21 +1,28 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
     "declaration": true,
-    "sourceMap": false,
-    "outDir": "./.build",
-    "removeComments": true,
-    "isolatedModules": true,
-    "strict": true,
-    "moduleResolution": "node",
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": false,
     "inlineSources": false,
+    "isolatedModules": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "outDir": "./.build",
+    "removeComments": true,
+    "rootDirs": [
+      "./src",
+      "./tests"
+    ],
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "sourceMap": false,
+    "strict": true,
+    "target": "esnext",
+    "types": [
+      "node"
+    ]
   },
   "exclude": [
-	  "node_modules"
+    "node_modules"
   ]
 }

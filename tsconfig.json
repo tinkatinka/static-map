@@ -1,12 +1,17 @@
 {
-	"extends": "./tsconfig.base.json",
-	"exclude": [
-		"node_modules"
-	],
-	"include": [
-		"src/**/*",
-		"tests/**/*",
-		"jest.config.js",
-		".eslintrc.js"
-	]
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDirs": [
+      "./src",
+      "./tests"
+    ]
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "eslint.config.mjs"
+  ]
 }
