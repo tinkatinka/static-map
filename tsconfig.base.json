@@ -8,7 +8,7 @@
     "isolatedModules": true,
     "module": "esnext",
     "moduleResolution": "bundler",
-    "outDir": "./.build",
+    "outDir": "./build",
     "removeComments": true,
     "rootDirs": [
       "./src",
