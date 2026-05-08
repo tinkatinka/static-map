@@ -42,14 +42,8 @@ export type StrokeFillOptions =
 	SetOptional<StrokeOptions, 'strokeStyle'> &
 	SetOptional<FillOptions, 'fillStyle'>;
 
-export type StaticMapOverlay = {
-	type: StaticMapOverlayType;
-} &
-StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapRect |
-StaticMapPolygon | StaticMapText | StaticMapScale;
-
-type StaticMapOverlayType =
-	'image' | 'line' | 'circle' | 'rect' | 'polygon' | 'text' | 'scale';
+export type StaticMapOverlay = StaticMapImage | StaticMapLine | StaticMapCircle | StaticMapRect | StaticMapPolygon |
+	StaticMapText | StaticMapScale;
 
 export interface StaticMapImage {
 	type: 'image';
@@ -188,10 +182,10 @@ export interface StaticMapOptions {
 	tileMaxZoom: number;
 	/** Tile cache base path or `undefined` if no cache shall be used */
 	tileCache?: string;
-	/** User agent string to transmit when loading tiles */
-	userAgent?: string;
 	/** Tile loading timeout [ms] */
 	tileTimeout: number;
+	/** User agent string to transmit when loading tiles */
+	userAgent: string;
 	/** Background color in CSS notation (only relevant for transparent tiles) */
 	backgroundColor?: string;
 	/** Grayscale filter for map tiles (not image overlays(!)) */
@@ -221,6 +215,7 @@ export class StaticMap {
 		tileSize: 256,
 		tileMaxZoom: 20,
 		tileTimeout: 2000,
+		userAgent: 'StaticMap/3',
 		grayscale: false
 	};
 	/** Default line options */
@@ -292,9 +287,9 @@ export class StaticMap {
 	readonly options: StaticMapOptions;
 
 	/** A tile cache, if desired */
-	private cache?: TileCache;
+	private readonly cache?: TileCache;
 	/** An array of overlays */
-	private overlays: StaticMapOverlay[];
+	private readonly overlays: StaticMapOverlay[];
 
 	/**
 	 * Construct a new StaticMap object with options
@@ -308,23 +303,37 @@ export class StaticMap {
 
 	/**
 	 * The extent of this map. Either as specified explicitly in the options ({@link StaticMapOptions}) or computed
-	 * from the image overlays ({@link StaticMapImage})
+	 * from the overlays ({@link StaticMapOverlay})
 	 */
 	get extent(): LatLngBounds | undefined {
 		return this.options.extent ?? this.calculateExtent();
 	}
 
+	/** Computed left padding (from options.paddingLeft, .paddingX and .padding) */
 	get paddingLeft(): number {
 		return this.options.paddingLeft ?? this.options.paddingX ?? this.options.padding;
 	}
+	/** Computed right padding (from options.paddingRight, .paddingX and .padding) */
 	get paddingRight(): number {
 		return this.options.paddingRight ?? this.options.paddingX ?? this.options.padding;
 	}
+	/** Computed top padding (from options.paddingTop, .paddingX and .padding) */
 	get paddingTop(): number {
 		return this.options.paddingTop ?? this.options.paddingY ?? this.options.padding;
 	}
+	/** Computed bottom padding (from options.paddingBottom, .paddingX and .padding) */
 	get paddingBottom(): number {
 		return this.options.paddingBottom ?? this.options.paddingY ?? this.options.padding;
+	}
+
+	/**
+	 * Overwrite options
+	 * @param options Partial set of options to modify
+	 * @returns `this`
+	 */
+	setOptions(options: Partial<Omit<StaticMapOptions, 'tileCache'>>): StaticMap {
+		merge(this.options, options);
+		return this;
 	}
 
 	/**
@@ -369,6 +378,7 @@ export class StaticMap {
 	 * Add an image overlay
 	 * @param src The source URL of this image
 	 * @param bounds The bounds of this image
+	 * @returns `this`
 	 */
 	addImage(src: string, bounds: LatLngBounds): StaticMap {
 		return this.addOverlay({ type: 'image', src, bounds });

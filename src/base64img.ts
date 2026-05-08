@@ -13,7 +13,7 @@ export function mimeFromURL(url: string) {
 
 export async function base64img(
 	url: string,
-	userAgent: string = 'StaticMap/3',
+	userAgent: string,
 	timeout: number = 0
 ): Promise<string> {
 	let timeoutId: NodeJS.Timeout | undefined;
