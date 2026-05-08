@@ -1,6 +1,6 @@
 {
 	"name": "@tinkatinka/static-map",
-	"version": "3.0.6",
+	"version": "3.1.0",
 	"description": "Render static map images",
 	"author": "Florian Gmeiner <florian@tinkatinka.com>",
 	"license": "MIT",

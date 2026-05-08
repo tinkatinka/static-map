@@ -717,7 +717,12 @@ export class StaticMap {
 			.replace('{y}', tileY.toString());
 		let src = url;
 		if (this.cache !== undefined) {
-			const td: TileData = { z: zoom, x: tileX, y: tileY };
+			const td: TileData = {
+				z: zoom,
+				x: tileX,
+				y: tileY,
+				url: this.options.tileURL
+			};
 			try {
 				const csrc = await this.cache.pass(
 					td,

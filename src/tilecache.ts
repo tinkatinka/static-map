@@ -3,6 +3,22 @@ import { readFile, writeFile } from 'fs/promises';
 import { join as pathJoin } from 'path';
 
 
+function cyrb53(str: string, seed: number = 0): string {
+	let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+	for (let i = 0, ch; i < str.length; i++) {
+		ch = str.charCodeAt(i);
+		h1 = Math.imul(h1 ^ ch, 2654435761);
+		h2 = Math.imul(h2 ^ ch, 1597334677);
+	}
+	h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+	h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+	h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+	h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+	// return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+	return (h2>>>0).toString(16).padStart(8, '0')+(h1>>>0).toString(16).padStart(8, '0');
+};
+
+
 /**
  * Tile data
  */
@@ -10,6 +26,7 @@ export interface TileData {
 	z: number;
 	x: number;
 	y: number;
+	url: string;
 }
 
 
@@ -18,7 +35,7 @@ export interface TileData {
  */
 export class TileCache {
 
-	static fnTemplate = '{z}_{x}_{y}.png';
+	static fnTemplate = '{url}_{z}_{x}_{y}.png';
 
 	path: string;
 
@@ -79,10 +96,10 @@ export class TileCache {
 	 */
 	private tilePath(data: TileData): string {
 		const fn = TileCache.fnTemplate
+			.replace('{url}', cyrb53(data.url))
 			.replace('{z}', data.z.toString())
 			.replace('{x}', data.x.toString())
 			.replace('{y}', data.y.toString());
-
 		return pathJoin(this.path, fn);
 	}
 }
