@@ -73,7 +73,7 @@ export class TileCache {
 		const p = this.tilePath(data);
 		try {
 			const r = await readFile(p, { encoding: 'utf-8' });
-			return r;
+			return (r.length > 0) ? r : undefined;
 		} catch {
 			return undefined;
 		}
